@@ -1,0 +1,15 @@
+{
+  "name": "@macai-project/framework-node",
+  "version": "1.0.0",
+  "main": "dist/index.js",
+  "repository": "git@github.com:macai-project/framework-node.git",
+  "author": "Giovanni Giordano <giovanni.giordano@macaiapp.com>",
+  "license": "MIT",
+  "scripts": {
+    "build": "tsc",
+    "prepublishOnly": "yarn build"
+  },
+  "devDependencies": {
+    "typescript": "^4.4.3"
+  }
+}
