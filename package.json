@@ -28,7 +28,7 @@
     "url": "https://github.com/macai-project/framework-node/issues"
   },
   "homepage": "https://github.com/macai-project/framework-node#readme",
-  "description": "",
+  "description": "Minimalist framework for AWS Lambda in NodeJS used in Macai",
   "files": [
     "dist",
     "package.json"
