@@ -1,5 +1,5 @@
 name: Publish NPM package
-on: tag
+on: release
 jobs:
   publish:
     runs-on: ubuntu-latest
