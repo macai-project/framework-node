@@ -1,15 +1,30 @@
 {
-  "name": "@macai-project/framework-node",
-  "version": "1.0.0",
+  "name": "@macai-tech/framework-node",
+  "version": "1.0.7",
   "main": "dist/index.js",
-  "repository": "git@github.com:macai-project/framework-node.git",
+  "types": "dist/index.d.ts",
+  "repository": {
+    "type": "git",
+    "url": "git+ssh://git@github.com/macai-project/framework-node.git"
+  },
   "author": "Giovanni Giordano <giovanni.giordano@macaiapp.com>",
   "license": "MIT",
   "scripts": {
-    "build": "tsc",
-    "prepublishOnly": "yarn build"
+    "build": "tsc"
+  },
+  "dependencies": {
+    "@sentry/serverless": "^6.13.3",
+    "ajv": "^8.6.3",
+    "aws-xray-sdk": "^3.3.3",
+    "mysql": "^2.18.1"
   },
   "devDependencies": {
     "typescript": "^4.4.3"
-  }
+  },
+  "bugs": {
+    "url": "https://github.com/macai-project/framework-node/issues"
+  },
+  "homepage": "https://github.com/macai-project/framework-node#readme",
+  "description": "",
+  "files": ["dist", "package.json"]
 }
