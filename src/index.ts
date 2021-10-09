@@ -17,7 +17,7 @@ export function lambda<Event extends EventBridgeEvent<string, any>, Schema>(
     if (validate(schema, event.detail)) {
       return await handler(event);
     } else {
-      return new Error("KO: Payload not valid");
+      return "KO: Payload not valid";
     }
   });
 }
