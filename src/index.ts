@@ -2,31 +2,36 @@ import { EventBridgeEvent } from "aws-lambda";
 import * as Sentry from "@sentry/serverless";
 import mysql from "mysql";
 import AWSXRay from "aws-xray-sdk";
-import { createRepository, Repository } from "./repository";
+import { createConnection, Connection } from "./repository";
 import { EventSchema, validate } from "./validator";
 
 const mysqlClient =
   process.env.NODE_ENV === "production" ? AWSXRay.captureMySQL(mysql) : mysql;
 
 export function lambda<Event extends EventBridgeEvent<string, any>, Schema>(
-  handler: (event: Event, repository: Repository) => Promise<unknown>,
+  handler: (event: Event) => Promise<unknown>,
   schema: EventSchema<Schema>
 ) {
   return Sentry.AWSLambda.wrapHandler(async (event: Event) => {
     // Validate event payload
     if (validate(schema, event.detail)) {
-      return await handler(event, createRepository(mysqlClient));
+      return await handler(event);
     } else {
       return new Error("KO: Payload not valid");
     }
   });
 }
 
-export function init() {
+export function init(): { connection: Connection } {
   Sentry.AWSLambda.init({
     dsn: process.env.SENTRY_DSN,
     tracesSampleRate: 1.0,
   });
+  const connection = createConnection(mysqlClient);
+
+  return {
+    connection,
+  };
 }
 
 export { default as logger } from "./logger";

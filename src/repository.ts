@@ -1,10 +1,10 @@
 import { captureMySQL } from "aws-xray-sdk";
 
-export type Repository = captureMySQL.PatchedConnection;
+export type Connection = captureMySQL.PatchedConnection;
 
-export const createRepository = (
+export const createConnection = (
   client: captureMySQL.PatchedMySQL
-): Repository => {
+): Connection => {
   const connection = client.createConnection({
     host: process.env.AURORA_HOSTNAME as string,
     user: process.env.AURORA_USERNAME as string,
