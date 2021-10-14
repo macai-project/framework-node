@@ -15,9 +15,17 @@ export function lambda<Event extends EventBridgeEvent<string, any>, Schema>(
   return Sentry.AWSLambda.wrapHandler(async (event: Event) => {
     // Validate event payload
     if (validate(schema, event.detail)) {
-      return await handler(event);
+      try {
+        return await handler(event);
+      } catch (error: any) {
+        if (error instanceof Error) {
+          throw error;
+        } else {
+          throw Error(error);
+        }
+      }
     } else {
-      return "KO: Payload not valid";
+      throw Error("Payload not valid");
     }
   });
 }

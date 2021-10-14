@@ -9,7 +9,7 @@ export function validate<T>(schema: JSONSchemaType<T>, event: any): boolean {
   const validator = ajv.compile(schema);
   const isValid = validator(event);
   if (!isValid) {
-    logger.error("Payload not valid", validator.errors);
+    logger.error("Payload not valid", validator.errors, event);
   }
   return isValid;
 }
