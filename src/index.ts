@@ -33,6 +33,7 @@ export function lambda<Event extends EventBridgeEvent<string, any>, Schema>(
 export function init(): { connection: Connection } {
   Sentry.AWSLambda.init({
     dsn: process.env.SENTRY_DSN,
+    environment: process.env.ENVIRONMENT,
     tracesSampleRate: 1.0,
   });
   const connection = createConnection(mysqlClient);
