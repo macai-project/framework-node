@@ -1,6 +1,6 @@
 import { captureMySQL } from "aws-xray-sdk";
 
-export type Connection = captureMySQL.PatchedConnection;
+export type Connection = captureMySQL.PatchedPoolConnection;
 export type Pool = captureMySQL.PatchedPool;
 
 export const createPool = (client: captureMySQL.PatchedMySQL): Pool => {
