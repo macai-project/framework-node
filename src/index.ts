@@ -2,7 +2,7 @@ import { EventBridgeEvent } from "aws-lambda";
 import * as Sentry from "@sentry/serverless";
 import mysql from "mysql";
 import AWSXRay from "aws-xray-sdk";
-import { createConnection, Connection } from "./repository";
+import { createPool, Pool } from "./repository";
 import { EventSchema, validate } from "./validator";
 
 const mysqlClient =
@@ -30,16 +30,16 @@ export function lambda<Event extends EventBridgeEvent<string, any>, Schema>(
   });
 }
 
-export function init(): { connection: Connection } {
+export function init(): { pool: Pool } {
   Sentry.AWSLambda.init({
     dsn: process.env.SENTRY_DSN,
     environment: process.env.ENVIRONMENT,
     tracesSampleRate: 1.0,
   });
-  const connection = createConnection(mysqlClient);
+  const pool = createPool(mysqlClient);
 
   return {
-    connection,
+    pool,
   };
 }
 
