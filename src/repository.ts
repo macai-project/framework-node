@@ -13,7 +13,7 @@ export const createPool = (client: captureMySQL.PatchedMySQL): Pool => {
   });
 };
 
-export const getConnection = (pool: Pool) =>
+export const getConnection = (pool: Pool): Promise<Connection> =>
   new Promise((resolve, reject) => {
     pool.getConnection((error, poolConnection) => {
       if (error) reject(error);
