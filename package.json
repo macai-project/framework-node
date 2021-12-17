@@ -16,8 +16,9 @@
   },
   "dependencies": {
     "@sentry/serverless": "^6.13.3",
-    "ajv": "^8.6.3",
     "aws-xray-sdk": "^3.3.3",
+    "fp-ts": "^2.11.5",
+    "io-ts": "^2.2.16",
     "mysql": "^2.18.1"
   },
   "devDependencies": {
