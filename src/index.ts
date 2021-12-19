@@ -5,27 +5,43 @@ import * as C from "io-ts/Codec";
 import AWSXRay from "aws-xray-sdk";
 import { createPool, Pool } from "./repository";
 import { parse } from "./parse";
-import logger from "./logger";
 import { pipe } from "fp-ts/lib/function";
-import { either } from "fp-ts";
+import { either, taskEither } from "fp-ts";
 import { draw } from "io-ts/lib/Decoder";
+import { WrapHandler } from "./handler";
 
 const mysqlClient =
   process.env.NODE_ENV === "production" ? AWSXRay.captureMySQL(mysql) : mysql;
 
-export function lambda<O, A>(
-  handler: (event: A) => void,
-  schema: C.Codec<unknown, O, A>
-) {
-  return Sentry.AWSLambda.wrapHandler(
-    async (event: EventBridgeEvent<string, O>) => {
-      pipe(
-        parse(schema, event.detail),
-        either.fold((err) => logger.error(draw(err)), handler)
+export const _lambda =
+  <O, A, R>(wrapperFunc: WrapHandler<EventBridgeEvent<string, O>, R | void>) =>
+  (
+    handler: (event: A) => taskEither.TaskEither<unknown, R>,
+    schema: C.Codec<unknown, O, A>
+  ) => {
+    return wrapperFunc(async (event: EventBridgeEvent<string, O>) => {
+      // we convert the parsed event to a taskEither so that we can chan the handler
+      const parsedEvent = taskEither.fromEither(parse(schema, event.detail));
+
+      // we build the task making sure to have a readable error if the decoding fails
+      const handlerTask = pipe(
+        parsedEvent,
+        taskEither.mapLeft(draw),
+        taskEither.chain(handler)
       );
-    }
-  );
-}
+
+      // we throw in case of error
+      return handlerTask().then((result) => {
+        if (either.isLeft(result)) {
+          throw new Error(`Lambda failed with error: ${result.left}`);
+        }
+
+        return result.right;
+      });
+    });
+  };
+
+export const lambda = _lambda(Sentry.AWSLambda.wrapHandler);
 
 export function init(): { pool: Pool } {
   Sentry.AWSLambda.init({
