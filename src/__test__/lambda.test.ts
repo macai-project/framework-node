@@ -2,6 +2,7 @@ import { EventBridgeEvent } from "aws-lambda";
 import { identity } from "fp-ts/function";
 import { _lambda } from "..";
 import * as C from "io-ts/Codec";
+import { NumberFromString } from "../codecs";
 import { taskEither } from "fp-ts";
 
 const wrapperMock = identity;
@@ -19,19 +20,20 @@ const getEventBridgeEvent = <D>(detail: D): EventBridgeEvent<string, D> => ({
   detail,
 });
 
-const getLambda = <O, A, R>() => _lambda<O, A, R>(wrapperMock);
+const getLambda = <O, A, R, E extends string = never>(e?: NodeJS.ProcessEnv) =>
+  _lambda<O, A, R, E>(wrapperMock, e);
 
 describe("lambda", () => {
-  it("returns the expected value when succeds", async () => {
-    const detailSchema = C.struct({ foo: C.string, bar: C.number });
-    type DetailSchema = C.TypeOf<typeof detailSchema>;
+  it("given lambda, when handler is successful and event has correct payload, lambda returns the expected value", async () => {
+    const eventDetailSchema = C.struct({ foo: C.string, bar: C.number });
+    type DetailSchema = C.TypeOf<typeof eventDetailSchema>;
     type ResultSchema = { result: "success!" };
-    const handler = (_: DetailSchema) => {
+    const handler = (_: { event: DetailSchema }) => {
       return taskEither.of({ result: "success!" as const });
     };
     const lambda = getLambda<DetailSchema, DetailSchema, ResultSchema>();
 
-    const result = await lambda(handler, detailSchema)(
+    const result = await lambda({ eventDetailSchema })(handler)(
       getEventBridgeEvent({ foo: "foo", bar: 3 }),
       contextMock,
       callbackMock
@@ -40,16 +42,16 @@ describe("lambda", () => {
     expect(result).toEqual({ result: "success!" });
   });
 
-  it("fails with the expected payload when the event is not well formatted", () => {
-    const detailSchema = C.struct({ foo: C.string, bar: C.number });
-    type DetailSchema = C.TypeOf<typeof detailSchema>;
+  it("given lambda, when handler is successful but event has incorrect payload, lambda returns the expected error", () => {
+    const eventDetailSchema = C.struct({ foo: C.string, bar: C.number });
+    type DetailSchema = C.TypeOf<typeof eventDetailSchema>;
     type ResultSchema = { result: "success!" };
-    const handler = (_: DetailSchema) => {
+    const handler = (_: { event: DetailSchema }) => {
       return taskEither.of({ result: "success!" as const });
     };
     const lambda = getLambda<DetailSchema, DetailSchema, ResultSchema>();
 
-    const result = lambda(handler, detailSchema)(
+    const result = lambda({ eventDetailSchema })(handler)(
       getEventBridgeEvent({ foo: "foo" }) as any,
       contextMock,
       callbackMock
@@ -57,21 +59,49 @@ describe("lambda", () => {
 
     expect(result).rejects.toHaveProperty(
       "message",
-      `Lambda failed with error: required property "bar"
+      `Incorrect Event Detail: required property "bar"
 └─ cannot decode undefined, should be number`
     );
   });
 
-  it("fails with the expected payload when the handler fails", () => {
-    const detailSchema = C.struct({ foo: C.string, bar: C.number });
-    type DetailSchema = C.TypeOf<typeof detailSchema>;
+  it("given lambda, when handler fails and event has correct payload, lambda returns the expected error", () => {
+    const eventDetailSchema = C.struct({ foo: C.string, bar: C.number });
+    type DetailSchema = C.TypeOf<typeof eventDetailSchema>;
     type ResultSchema = { result: "success!" };
-    const handler = (_: DetailSchema) => {
+    const handler = (_: { event: DetailSchema }) => {
       return taskEither.left("utter failure...." as const);
     };
     const lambda = getLambda<DetailSchema, DetailSchema, ResultSchema>();
 
-    const result = lambda(handler, detailSchema)(
+    const result = lambda({ eventDetailSchema })(handler)(
+      getEventBridgeEvent({ foo: "foo", bar: 3 }),
+      contextMock,
+      callbackMock
+    );
+
+    expect(result).rejects.toHaveProperty("message", "utter failure....");
+  });
+
+  it("given lambda, when handler is successful and event has correct payload but env is incorrect, lambda returns the expected error", () => {
+    const eventDetailSchema = C.struct({ foo: C.string, bar: C.number });
+    type DetailSchema = C.TypeOf<typeof eventDetailSchema>;
+    const envSchema = {
+      RANDOM_ENV_VAR: C.string,
+      RANDOM_ENV_VAR_2: NumberFromString,
+    };
+    type EnvSchemaKeys = keyof typeof envSchema;
+    type ResultSchema = { result: "success!" };
+    const handler = (_: { event: DetailSchema }) => {
+      return taskEither.left("utter failure...." as const);
+    };
+    const lambda = getLambda<
+      DetailSchema,
+      DetailSchema,
+      ResultSchema,
+      EnvSchemaKeys
+    >({ RANDOM_ENV_VAR: "baz", RANDOM_ENV_VAR_2: "foo" });
+
+    const result = lambda({ eventDetailSchema, envSchema })(handler)(
       getEventBridgeEvent({ foo: "foo", bar: 3 }),
       contextMock,
       callbackMock
@@ -79,7 +109,39 @@ describe("lambda", () => {
 
     expect(result).rejects.toHaveProperty(
       "message",
-      "Lambda failed with error: utter failure...."
+      `Incorrect Env runtime: required property "RANDOM_ENV_VAR_2"
+└─ cannot decode "foo", should be parsable into a number`
     );
+  });
+
+  it("given lambda, when handler is successful and event has correct payload and env is correct, lambda returns the expected env values", async () => {
+    const eventDetailSchema = C.struct({ foo: C.string, bar: C.number });
+    type DetailSchema = C.TypeOf<typeof eventDetailSchema>;
+    const envSchema = {
+      RANDOM_ENV_VAR: C.string,
+      RANDOM_ENV_VAR_2: NumberFromString,
+    };
+    type EnvSchemaKeys = keyof typeof envSchema;
+    type ResultSchema = { result: "success!" };
+    const handler = (_: { event: DetailSchema }) => {
+      return taskEither.of({ result: "success!" as const });
+    };
+    const lambda = getLambda<
+      DetailSchema,
+      DetailSchema,
+      ResultSchema,
+      EnvSchemaKeys
+    >({
+      RANDOM_ENV_VAR: "baz",
+      RANDOM_ENV_VAR_2: "2",
+    });
+
+    const result = await lambda({ eventDetailSchema })(handler)(
+      getEventBridgeEvent({ foo: "foo", bar: 3 }),
+      contextMock,
+      callbackMock
+    );
+
+    expect(result).toEqual({ result: "success!" });
   });
 });
