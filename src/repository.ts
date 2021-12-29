@@ -1,28 +1,31 @@
 import { captureMySQL } from "aws-xray-sdk";
+import { decodeOrThrow } from "./codecs/utils";
+import { AuroraEnv, NodeEnv } from "./models";
+import AWSXRay from "aws-xray-sdk";
+import mysql from "mysql";
+import AWS, { DynamoDB } from "aws-sdk";
 
 export type Connection = captureMySQL.PatchedPoolConnection;
-export type Pool = captureMySQL.PatchedPool;
+export type MySQLPool = captureMySQL.PatchedPool;
 
-export const createPool = (client: captureMySQL.PatchedMySQL): Pool => {
-  return client.createPool({
+export const createAuroraPool = (): MySQLPool => {
+  const env = decodeOrThrow(AuroraEnv, process.env);
+
+  const mysqlClient =
+    env.NODE_ENV === "production" ? AWSXRay.captureMySQL(mysql) : mysql;
+
+  return mysqlClient.createPool({
     connectionLimit: 2,
-    host: process.env.AURORA_HOSTNAME as string,
-    user: process.env.AURORA_USERNAME as string,
-    password: process.env.AURORA_PASSWORD as string,
-    database: process.env.AURORA_DATABASE as string,
   });
 };
 
-export const getConnection = (pool: Pool): Promise<Connection> =>
-  new Promise((resolve, reject) => {
-    pool.getConnection((error, poolConnection) => {
-      if (error) {
-        reject(error);
-      } else {
-        poolConnection.ping((pingError) => {
-          if (pingError) reject(pingError);
-          resolve(poolConnection);
-        });
-      }
-    });
-  });
+export const createDynamoClient = (): DynamoDB => {
+  const env = decodeOrThrow(NodeEnv, process.env);
+
+  const dynamoClient =
+    env.NODE_ENV === "production"
+      ? AWSXRay.captureAWSClient(new AWS.DynamoDB())
+      : new AWS.DynamoDB();
+
+  return dynamoClient;
+};

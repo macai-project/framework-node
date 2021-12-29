@@ -1,18 +1,14 @@
 import { EventBridgeEvent } from "aws-lambda";
 import * as Sentry from "@sentry/serverless";
-import mysql from "mysql";
 import * as C from "io-ts/Codec";
-import AWSXRay from "aws-xray-sdk";
-import { createPool, Pool } from "./repository";
+import { DynamoDB } from "aws-sdk";
+import { createDynamoClient, createAuroraPool, MySQLPool } from "./repository";
 import { parse } from "./parse";
 import { pipe } from "fp-ts/lib/function";
 import { either, taskEither } from "fp-ts";
 import { draw } from "io-ts/lib/Decoder";
 import { WrapHandler } from "./handler";
 import { traverseWithIndex } from "fp-ts/lib/Record";
-
-const mysqlClient =
-  process.env.NODE_ENV === "production" ? AWSXRay.captureMySQL(mysql) : mysql;
 
 type SchemaRecord<K extends string> = Record<K, C.Codec<unknown, any, any>>;
 type Config<O, A, K extends string> = {
@@ -38,8 +34,6 @@ const getEnvValues = <K extends string>(
       );
     }),
     taskEither.mapLeft((e) => {
-      console.log(1111, draw(e));
-
       return `Incorrect Env runtime: ${draw(e)}`;
     })
   );
@@ -93,16 +87,28 @@ export const _lambda =
 
 export const lambda = _lambda(Sentry.AWSLambda.wrapHandler);
 
-export function init(): { pool: Pool } {
+type InitResult<A extends boolean, D extends boolean> = {} & (A extends false
+  ? {}
+  : { auroraPool: MySQLPool }) &
+  (D extends false ? {} : { dynamo: DynamoDB });
+
+export function init<A extends boolean, D extends boolean>({
+  aurora,
+  dynamo,
+}: {
+  aurora: A;
+  dynamo: D;
+}): InitResult<A, D> {
   Sentry.AWSLambda.init({
     dsn: process.env.SENTRY_DSN,
     environment: process.env.ENVIRONMENT,
     tracesSampleRate: 1.0,
   });
 
-  const pool = createPool(mysqlClient);
+  const auroraPool = aurora && createAuroraPool();
+  const dynamoClient = dynamo && createDynamoClient();
 
-  return { pool };
+  return { ...auroraPool, ...dynamoClient } as unknown as InitResult<A, D>;
 }
 
 export { default as logger } from "./logger";
