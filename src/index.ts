@@ -92,12 +92,12 @@ type InitResult<A extends boolean, D extends boolean> = {} & (A extends false
   : { auroraPool: MySQLPool }) &
   (D extends false ? {} : { dynamo: DynamoDB });
 
-export function init<A extends boolean, D extends boolean>({
+export function init<A extends boolean = false, D extends boolean = false>({
   aurora,
   dynamo,
 }: {
-  aurora: A;
-  dynamo: D;
+  aurora?: A;
+  dynamo?: D;
 }): InitResult<A, D> {
   Sentry.AWSLambda.init({
     dsn: process.env.SENTRY_DSN,
