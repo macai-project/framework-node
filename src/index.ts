@@ -55,7 +55,7 @@ export const _lambda =
       env: Record<K, string> | undefined;
     }) => taskEither.TaskEither<unknown, R>
   ) => {
-    return wrapperFunc(async (event: EventBridgeEvent<string, O>) => {
+    return wrapperFunc((event: EventBridgeEvent<string, O>) => {
       // we convert the parsed event to a taskEither so that we can chan the handler
       const parsedEvent = pipe(
         parse(eventDetailSchema, event.detail),
@@ -118,7 +118,7 @@ export function init<A extends boolean = false, D extends boolean = false>({
   const auroraPool = aurora && createAuroraPool();
   const dynamoClient = dynamo && createDynamoClient();
 
-  return { ...auroraPool, ...dynamoClient } as unknown as InitResult<A, D>;
+  return { auroraPool, dynamo: dynamoClient } as InitResult<A, D>;
 }
 
 export { default as logger } from "./logger";
