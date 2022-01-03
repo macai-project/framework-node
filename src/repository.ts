@@ -21,11 +21,22 @@ export const createAuroraPool = (): MySQLPool => {
 
 export const createDynamoClient = (): DynamoDB => {
   const env = decodeOrThrow(NodeEnv, process.env);
+  const params =
+    process.env.NODE_ENV === "development"
+      ? {
+          endpoint: "http://localstack:4566",
+          region: "eu-west-1",
+          credentials: {
+            accessKeyId: "test",
+            secretAccessKey: "test",
+          },
+        }
+      : undefined;
 
   const dynamoClient =
     env.NODE_ENV === "production"
-      ? AWSXRay.captureAWSClient(new AWS.DynamoDB())
-      : new AWS.DynamoDB();
+      ? AWSXRay.captureAWSClient(new AWS.DynamoDB(params))
+      : new AWS.DynamoDB(params);
 
   return dynamoClient;
 };
