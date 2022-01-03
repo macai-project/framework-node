@@ -89,10 +89,12 @@ export const _lambda =
 export const getLambda = <O, A, R, K extends string = never>(
   i: Config<O, A, K>
 ) => {
-  return _lambda(Sentry.AWSLambda.wrapHandler)(i) as unknown as (i: {
-    event: A;
-    env: Record<K, string> | undefined;
-  }) => taskEither.TaskEither<unknown, R>;
+  return _lambda(Sentry.AWSLambda.wrapHandler)(i) as unknown as (
+    f: (i: {
+      event: A;
+      env: Record<K, string> | undefined;
+    }) => taskEither.TaskEither<unknown, R>
+  ) => WrapHandler<EventBridgeEvent<string, O>, R | void>;
 };
 
 type InitResult<A extends boolean, D extends boolean> = {} & (A extends false
