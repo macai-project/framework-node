@@ -1,6 +1,7 @@
 import { EventBridgeEvent } from "aws-lambda";
 import * as Sentry from "@sentry/serverless";
 import * as C from "io-ts/Codec";
+import * as D from "io-ts/Decoder";
 import { DynamoDB } from "aws-sdk";
 import { createDynamoClient, createAuroraPool, MySQLPool } from "./repository";
 import { parse } from "./parse";
@@ -12,23 +13,23 @@ import { traverseWithIndex } from "fp-ts/lib/Record";
 
 type SchemaRecord<K extends string> = Record<K, C.Codec<unknown, any, any>>;
 type Config<O, A, K extends string> = {
-  eventDetailSchema: C.Codec<unknown, O, A>;
+  eventDetailSchema: D.Decoder<unknown, A>;
   envSchema?: SchemaRecord<K>;
 };
 
 const parTraverse = traverseWithIndex(taskEither.ApplicativePar);
 
 const getEnvValues = <K extends string>(
-  envSchemaRecord: Record<K, C.Codec<unknown, any, string>>,
+  envSchemaRecord: Record<K, D.Decoder<unknown, string>>,
   envRuntime: NodeJS.ProcessEnv
 ): taskEither.TaskEither<string, Record<K, string>> => {
   return pipe(
     envSchemaRecord,
     parTraverse((key, codec) => {
-      const codecRecord = C.struct({ [key]: codec });
+      const decoderRecord = D.struct({ [key]: codec });
 
       return pipe(
-        parse(codecRecord, { [key]: envRuntime[key] }),
+        parse(decoderRecord, { [key]: envRuntime[key] }),
         taskEither.fromEither,
         taskEither.map((v) => v[key])
       );

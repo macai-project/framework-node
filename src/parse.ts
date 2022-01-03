@@ -1,9 +1,9 @@
 import { Either } from "fp-ts/Either";
-import * as C from "io-ts/Codec";
+import * as D from "io-ts/Decoder";
 import { DecodeError } from "io-ts/Decoder";
 
 export function parse<T>(
-  schema: C.Codec<unknown, unknown, T>,
+  schema: D.Decoder<unknown, T>,
   event: any
 ): Either<DecodeError, T> {
   return schema.decode(event);
