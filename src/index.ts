@@ -10,6 +10,7 @@ import { either, taskEither } from "fp-ts";
 import { draw } from "io-ts/lib/Decoder";
 import { WrapHandler } from "./handler";
 import { traverseWithIndex } from "fp-ts/lib/Record";
+import { debug } from "./logger";
 
 type SchemaRecord<K extends string> = Record<K, C.Codec<unknown, any, any>>;
 type Config<O, A, K extends string> = {
@@ -27,11 +28,15 @@ const getEnvValues = <K extends string>(
     envSchemaRecord,
     parTraverse((key, codec) => {
       const decoderRecord = D.struct({ [key]: codec });
+      debug("parsing env: ", envSchemaRecord);
 
       return pipe(
         parse(decoderRecord, { [key]: envRuntime[key] }),
         taskEither.fromEither,
-        taskEither.map((v) => v[key])
+        taskEither.map((v) => {
+          debug("parsed env successfully: ", v);
+          return v[key];
+        })
       );
     }),
     taskEither.mapLeft((e) => {
@@ -56,10 +61,15 @@ export const _lambda =
     }) => taskEither.TaskEither<unknown, R>
   ) => {
     return wrapperFunc((event: EventBridgeEvent<string, O>) => {
-      // we convert the parsed event to a taskEither so that we can chan the handler
+      debug("parsing event: ", eventDetailSchema);
+
       const parsedEvent = pipe(
         parse(eventDetailSchema, event.detail),
         taskEither.fromEither,
+        taskEither.map((v) => {
+          debug("parsed event successfully: ", v);
+          return v;
+        }),
         taskEither.mapLeft((e) => `Incorrect Event Detail: ${draw(e)}`)
       );
 
@@ -68,9 +78,9 @@ export const _lambda =
         taskEither.Do,
         taskEither.bind("event", () => parsedEvent),
         taskEither.bind("env", () =>
-          envSchema === undefined
-            ? taskEither.of(undefined)
-            : getEnvValues(envSchema, envRuntime)
+          envSchema
+            ? getEnvValues(envSchema, envRuntime)
+            : taskEither.of(undefined)
         ),
         taskEither.chain(handler)
       );

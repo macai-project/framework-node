@@ -16,4 +16,10 @@ const logger = {
   },
 };
 
+export const debug = (...args: any[]) => {
+  if (process.env.NODE_ENV === "development") {
+    logger.info(args);
+  }
+};
+
 export default logger;
