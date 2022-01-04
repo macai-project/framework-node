@@ -91,6 +91,8 @@ export const _lambda =
           throw new Error(String(result.left));
         }
 
+        debug("handler succeded with payoad: ", result.right);
+
         return result.right;
       });
     });
