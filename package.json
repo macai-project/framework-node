@@ -18,9 +18,11 @@
   },
   "dependencies": {
     "@sentry/serverless": "^6.13.3",
+    "aws-appsync": "^4.1.4",
     "aws-sdk": "^2.1048.0",
     "aws-xray-sdk": "^3.3.3",
     "fp-ts": "^2.11.5",
+    "graphql": "15.7.0",
     "io-ts": "^2.2.16",
     "mysql": "^2.18.1"
   },

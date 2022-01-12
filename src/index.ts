@@ -3,7 +3,12 @@ import * as Sentry from "@sentry/serverless";
 import * as C from "io-ts/Codec";
 import * as D from "io-ts/Decoder";
 import { DynamoDB } from "aws-sdk";
-import { createDynamoClient, createAuroraPool, MySQLPool } from "./repository";
+import {
+  createDynamoClient,
+  createAuroraPool,
+  MySQLPool,
+  createAppSyncClient,
+} from "./repository";
 import { parse } from "./parse";
 import { pipe } from "fp-ts/lib/function";
 import { either, taskEither } from "fp-ts";
@@ -11,6 +16,7 @@ import { draw } from "io-ts/lib/Decoder";
 import { WrapHandler } from "./handler";
 import { traverseWithIndex } from "fp-ts/lib/Record";
 import { debug } from "./logger";
+import AWSAppSyncClient from "aws-appsync";
 
 type SchemaRecord<K extends string> = Record<K, C.Codec<unknown, any, any>>;
 type Config<O, A, K extends string> = {
@@ -109,18 +115,27 @@ export const getLambda = <O, A, R, K extends string = never>(
   ) => WrapHandler<EventBridgeEvent<string, O>, R | void>;
 };
 
-type InitResult<A extends boolean, D extends boolean> = {} & (A extends false
-  ? {}
-  : { auroraPool: MySQLPool }) &
-  (D extends false ? {} : { dynamo: DynamoDB });
+type InitResult<
+  A extends boolean,
+  D extends boolean,
+  AS extends boolean = false
+> = {} & (A extends false ? {} : { auroraPool: MySQLPool }) &
+  (D extends false ? {} : { dynamo: DynamoDB }) &
+  (AS extends false ? {} : { appSync: AWSAppSyncClient<any> });
 
-export function init<A extends boolean = false, D extends boolean = false>({
+export function init<
+  A extends boolean = false,
+  D extends boolean = false,
+  AS extends boolean = false
+>({
   aurora,
   dynamo,
+  appSync,
 }: {
   aurora?: A;
   dynamo?: D;
-}): InitResult<A, D> {
+  appSync?: AS;
+}): InitResult<A, D, AS> {
   Sentry.AWSLambda.init({
     dsn: process.env.SENTRY_DSN,
     environment: process.env.ENVIRONMENT,
@@ -129,8 +144,13 @@ export function init<A extends boolean = false, D extends boolean = false>({
 
   const auroraPool = aurora && createAuroraPool();
   const dynamoClient = dynamo && createDynamoClient();
+  const appSyncClient = appSync && createAppSyncClient();
 
-  return { auroraPool, dynamo: dynamoClient } as InitResult<A, D>;
+  return {
+    auroraPool,
+    dynamo: dynamoClient,
+    appSync: appSyncClient,
+  } as InitResult<A, D, AS>;
 }
 
 export { default as logger } from "./logger";
