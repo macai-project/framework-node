@@ -1,10 +1,12 @@
+import AWS, { DynamoDB, Credentials } from "aws-sdk";
 import { captureMySQL } from "aws-xray-sdk";
-import { decodeOrThrow } from "./codecs/utils";
-import { AppSyncEnv, AuroraEnv, NodeEnv } from "./models";
 import AWSAppSyncClient from "aws-appsync";
 import AWSXRay from "aws-xray-sdk";
 import mysql from "mysql";
-import AWS, { DynamoDB, Credentials } from "aws-sdk";
+import "cross-fetch/polyfill";
+
+import { decodeOrThrow } from "./codecs/utils";
+import { AppSyncEnv, AuroraEnv, NodeEnv } from "./models";
 
 export type Connection = captureMySQL.PatchedPoolConnection;
 export type MySQLPool = captureMySQL.PatchedPool;
