@@ -48,8 +48,7 @@ export const createAppSyncClient = (): AWSAppSyncClient<any> => {
   const env = decodeOrThrow(AppSyncEnv, process.env);
   const credentials = new Credentials(
     env.AWS_ACCESS_KEY_ID,
-    env.AWS_SECRET_ACCESS_KEY,
-    env.AWS_SESSION_TOKEN
+    env.AWS_SECRET_ACCESS_KEY
   );
 
   AWS.config.update(
