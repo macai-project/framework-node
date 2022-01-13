@@ -46,33 +46,34 @@ export const createDynamoClient = (): DynamoDB => {
 
 export const createAppSyncClient = (): AWSAppSyncClient<any> => {
   const env = decodeOrThrow(AppSyncEnv, process.env);
-  const params =
-    process.env.NODE_ENV === "development"
+  const credentials = new Credentials(
+    env.AWS_ACCESS_KEY_ID,
+    env.AWS_SECRET_ACCESS_KEY,
+    env.AWS_SESSION_TOKEN
+  );
+
+  AWS.config.update(
+    env.NODE_ENV === "production"
       ? {
-          endpoint: "http://localstack:4566",
+          region: env.AWS_APPSYNC_REGION,
+          credentials,
+        }
+      : {
           region: "eu-west-1",
           credentials: {
             accessKeyId: "test",
             secretAccessKey: "test",
           },
         }
-      : undefined;
-
-  const credentials = new Credentials(
-    process.env.AWS_ACCESS_KEY_ID as string,
-    process.env.AWS_SECRET_ACCESS_KEY as string,
-    process.env.AWS_SESSION_TOKEN
   );
-
-  AWS.config.update({
-    region: env.AWS_APPSYNC_REGION,
-    credentials,
-  });
 
   const appSyncClient = new AWSAppSyncClient(
     {
-      url: env.AWS_APPSYNC_URL,
-      region: env.AWS_APPSYNC_URL,
+      url:
+        env.NODE_ENV === "production"
+          ? env.AWS_APPSYNC_URL
+          : "http://locastack:4566",
+      region: env.AWS_APPSYNC_REGION,
       auth: {
         type: "AWS_IAM",
         credentials,
