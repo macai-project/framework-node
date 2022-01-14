@@ -12,6 +12,9 @@ import { AppSyncEnv, AuroraEnv, NodeEnv } from "./models";
 
 export type Connection = captureMySQL.PatchedPoolConnection;
 export type MySQLPool = captureMySQL.PatchedPool;
+export type AWSAppSyncClient = {
+  query: <T>(params: { query: any; variables: T }) => Promise<unknown>;
+};
 
 export const createAuroraPool = (): MySQLPool => {
   const env = decodeOrThrow(AuroraEnv, process.env);

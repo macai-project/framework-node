@@ -8,6 +8,7 @@ import {
   createAuroraPool,
   MySQLPool,
   createAppSyncClient,
+  AWSAppSyncClient,
 } from "./repository";
 import { parse } from "./parse";
 import { pipe } from "fp-ts/lib/function";
@@ -16,7 +17,6 @@ import { draw } from "io-ts/lib/Decoder";
 import { WrapHandler } from "./handler";
 import { traverseWithIndex } from "fp-ts/lib/Record";
 import { debug } from "./logger";
-import AWSAppSyncClient from "aws-appsync";
 
 type SchemaRecord<K extends string> = Record<K, C.Codec<unknown, any, any>>;
 type Config<O, A, K extends string> = {
@@ -121,7 +121,7 @@ type InitResult<
   AS extends boolean = false
 > = {} & (A extends false ? {} : { auroraPool: MySQLPool }) &
   (D extends false ? {} : { dynamo: DynamoDB }) &
-  (AS extends false ? {} : { appSync: AWSAppSyncClient<any> });
+  (AS extends false ? {} : { appSync: AWSAppSyncClient });
 
 export function init<
   A extends boolean = false,
