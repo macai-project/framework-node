@@ -15,9 +15,6 @@ export const AuroraEnv = D.intersect(NodeEnv)(
 
 export const AppSyncEnv = D.intersect(NodeEnv)(
   D.struct({
-    AWS_ACCESS_KEY_ID: D.string,
-    AWS_SECRET_ACCESS_KEY: D.string,
-    AWS_SESSION_TOKEN: D.string,
     AWS_APPSYNC_URL: D.string,
     AWS_APPSYNC_REGION: D.string,
   })

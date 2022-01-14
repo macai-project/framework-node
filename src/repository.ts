@@ -1,8 +1,10 @@
-import AWS, { DynamoDB, Credentials } from "aws-sdk";
+import https from "https";
+import AWS, { DynamoDB } from "aws-sdk";
+import SignerV4 from "aws-sdk/lib/signers/v4";
 import { captureMySQL } from "aws-xray-sdk";
-import AWSAppSyncClient from "aws-appsync";
 import AWSXRay from "aws-xray-sdk";
 import mysql from "mysql";
+import url from "url";
 import "cross-fetch/polyfill";
 
 import { decodeOrThrow } from "./codecs/utils";
@@ -44,50 +46,58 @@ export const createDynamoClient = (): DynamoDB => {
   return dynamoClient;
 };
 
-export const createAppSyncClient = (): AWSAppSyncClient<any> => {
+export const createAppSyncClient = () => {
   const env = decodeOrThrow(AppSyncEnv, process.env);
-  const credentials = new Credentials(
-    env.AWS_ACCESS_KEY_ID,
-    env.AWS_SECRET_ACCESS_KEY
-  );
 
-  AWS.config.update(
-    env.NODE_ENV === "production"
-      ? {
-          region: env.AWS_APPSYNC_REGION,
-          credentials,
+  const query = <T>({ query, variables }: { query: any; variables: T }) => {
+    const endpoint = new url.URL(env.AWS_APPSYNC_URL).hostname.toString();
+    const req = new AWS.HttpRequest(
+      new AWS.Endpoint(env.AWS_APPSYNC_URL as string),
+      env.AWS_APPSYNC_REGION as string
+    );
+
+    req.method = "POST";
+    req.path = "/graphql";
+    req.headers.host = endpoint;
+    req.headers["Content-Type"] = "application/json";
+    req.body = JSON.stringify({
+      query,
+      variables,
+    });
+
+    const signer = new SignerV4(req, "appsync", true);
+    signer.addAuthorization(AWS.config.credentials, new Date());
+
+    return new Promise((resolve, reject) => {
+      const httpRequest = https.request(
+        { ...req, host: endpoint },
+        (result) => {
+          let data = "";
+
+          result.on("data", (chunk) => {
+            data += chunk;
+          });
+
+          result.on("end", () => {
+            const response: { data: any; errors?: any[] } = JSON.parse(
+              data.toString()
+            );
+            if (response.errors && response.errors.length > 0) {
+              reject(response.errors);
+            } else {
+              resolve(response.data);
+            }
+          });
         }
-      : {
-          region: "eu-west-1",
-          credentials: {
-            accessKeyId: "test",
-            secretAccessKey: "test",
-          },
-        }
-  );
+      );
+      httpRequest.on("error", reject);
 
-  const appSyncClient = new AWSAppSyncClient(
-    {
-      url:
-        env.NODE_ENV === "production"
-          ? env.AWS_APPSYNC_URL
-          : "http://locastack:4566",
-      region: env.AWS_APPSYNC_REGION,
-      auth: {
-        type: "AWS_IAM",
-        credentials,
-      },
-      disableOffline: true,
-    },
-    {
-      defaultOptions: {
-        query: {
-          fetchPolicy: "network-only",
-          errorPolicy: "all",
-        },
-      },
-    }
-  );
+      httpRequest.write(req.body);
+      httpRequest.end();
+    });
+  };
 
-  return appSyncClient;
+  return {
+    query,
+  };
 };
