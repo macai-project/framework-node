@@ -6,6 +6,7 @@ import { DynamoDB } from "aws-sdk";
 import {
   createDynamoClient,
   createAuroraPool,
+  createEventBridgeClient,
   MySQLPool,
   createAppSyncClient,
   AWSAppSyncClient,
@@ -17,6 +18,7 @@ import { draw } from "io-ts/lib/Decoder";
 import { WrapHandler } from "./handler";
 import { traverseWithIndex } from "fp-ts/lib/Record";
 import { debug } from "./logger";
+import { EventBridgeClient } from "@aws-sdk/client-eventbridge";
 
 type SchemaRecord<K extends string> = Record<K, C.Codec<unknown, any, any>>;
 type Config<O, A, K extends string> = {
@@ -118,24 +120,29 @@ export const getLambda = <O, A, R, K extends string = never>(
 type InitResult<
   A extends boolean,
   D extends boolean,
-  AS extends boolean = false
-> = {} & (A extends false ? {} : { auroraPool: MySQLPool }) &
+  AS extends boolean,
+  EB extends boolean
+> = (A extends false ? {} : { auroraPool: MySQLPool }) &
   (D extends false ? {} : { dynamo: DynamoDB }) &
-  (AS extends false ? {} : { appSync: AWSAppSyncClient });
+  (AS extends false ? {} : { appSync: AWSAppSyncClient }) &
+  (EB extends false ? {} : { eventBridge: EventBridgeClient });
 
 export function init<
   A extends boolean = false,
   D extends boolean = false,
-  AS extends boolean = false
+  AS extends boolean = false,
+  EB extends boolean = false
 >({
   aurora,
   dynamo,
   appSync,
+  eventBridge,
 }: {
   aurora?: A;
   dynamo?: D;
   appSync?: AS;
-}): InitResult<A, D, AS> {
+  eventBridge?: EB;
+}): InitResult<A, D, AS, EB> {
   Sentry.AWSLambda.init({
     dsn: process.env.SENTRY_DSN,
     environment: process.env.ENVIRONMENT,
@@ -145,12 +152,14 @@ export function init<
   const auroraPool = aurora && createAuroraPool();
   const dynamoClient = dynamo && createDynamoClient();
   const appSyncClient = appSync && createAppSyncClient();
+  const eventBridgeClient = eventBridge && createEventBridgeClient();
 
   return {
     auroraPool,
     dynamo: dynamoClient,
     appSync: appSyncClient,
-  } as InitResult<A, D, AS>;
+    eventBridge: eventBridgeClient,
+  } as InitResult<A, D, AS, EB>;
 }
 
 export { default as logger } from "./logger";

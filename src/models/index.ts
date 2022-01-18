@@ -19,3 +19,9 @@ export const AppSyncEnv = D.intersect(NodeEnv)(
     AWS_APPSYNC_REGION: D.string,
   })
 );
+
+export const EventBridgeEnv = D.intersect(NodeEnv)(
+  D.struct({
+    AWS_EVENTBRIDGE_REGION: D.string,
+  })
+);

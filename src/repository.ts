@@ -3,12 +3,13 @@ import AWS, { DynamoDB } from "aws-sdk";
 import SignerV4 from "aws-sdk/lib/signers/v4";
 import { captureMySQL } from "aws-xray-sdk";
 import AWSXRay from "aws-xray-sdk";
+import { EventBridgeClient } from "@aws-sdk/client-eventbridge";
 import mysql from "mysql";
 import url from "url";
 import "cross-fetch/polyfill";
 
 import { decodeOrThrow } from "./codecs/utils";
-import { AppSyncEnv, AuroraEnv, NodeEnv } from "./models";
+import { AppSyncEnv, AuroraEnv, EventBridgeEnv, NodeEnv } from "./models";
 
 export type Connection = captureMySQL.PatchedPoolConnection;
 export type MySQLPool = captureMySQL.PatchedPool;
@@ -29,26 +30,41 @@ export const createAuroraPool = (): MySQLPool => {
 
 export const createDynamoClient = (): DynamoDB => {
   const env = decodeOrThrow(NodeEnv, process.env);
-  const params =
-    process.env.NODE_ENV === "development"
-      ? {
-          endpoint: "http://localstack:4566",
-          region: "eu-west-1",
-          credentials: {
-            accessKeyId: "test",
-            secretAccessKey: "test",
-          },
-        }
-      : undefined;
+  const isProd = env.NODE_ENV === "production";
+  const params = isProd
+    ? undefined
+    : {
+        endpoint: "http://localstack:4566",
+        region: "eu-west-1",
+        credentials: {
+          accessKeyId: "test",
+          secretAccessKey: "test",
+        },
+      };
 
-  const dynamoClient =
-    env.NODE_ENV === "production"
-      ? AWSXRay.captureAWSClient(new AWS.DynamoDB(params))
-      : new AWS.DynamoDB(params);
+  const dynamoClient = new AWS.DynamoDB(params);
 
-  return dynamoClient;
+  return isProd ? AWSXRay.captureAWSClient(dynamoClient) : dynamoClient;
 };
 
+export const createEventBridgeClient = () => {
+  const env = decodeOrThrow(EventBridgeEnv, process.env);
+  const isProd = env.NODE_ENV === "production";
+  const params = isProd
+    ? { region: env.AWS_EVENTBRIDGE_REGION }
+    : {
+        endpoint: "http://localstack:4566",
+        region: "eu-west-1",
+        credentials: {
+          accessKeyId: "test",
+          secretAccessKey: "test",
+        },
+      };
+
+  const client = new EventBridgeClient(params);
+
+  return isProd ? AWSXRay.captureAWSClient(client) : client;
+};
 export const createAppSyncClient = () => {
   const env = decodeOrThrow(AppSyncEnv, process.env);
 

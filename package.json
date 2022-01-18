@@ -17,6 +17,7 @@
     "test:w": "jest --config=jest.config.js --passWithNoTests --watch"
   },
   "dependencies": {
+    "@aws-sdk/client-eventbridge": "^3.47.0",
     "@sentry/serverless": "^6.13.3",
     "aws-sdk": "^2.1048.0",
     "aws-xray-sdk": "^3.3.3",
