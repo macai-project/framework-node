@@ -69,7 +69,7 @@ export const createEventBridgeClient = (
 
   const client = new EventBridgeClient(params);
 
-  return isProd ? AWSXRay.captureAWSClient(client) : client;
+  return client;
 };
 export const createAppSyncClient = (
   _env: Record<string, string | undefined>
