@@ -21,9 +21,10 @@ export const createAuroraPool = (
   _env: Record<string, string | undefined>
 ): MySQLPool => {
   const env = decodeOrThrow(AuroraEnv, _env);
+  const isProd = env.NODE_ENV === "production";
+  const isStaging = env.NODE_ENV === "staging";
 
-  const mysqlClient =
-    env.NODE_ENV === "production" ? AWSXRay.captureMySQL(mysql) : mysql;
+  const mysqlClient = isProd || isStaging ? AWSXRay.captureMySQL(mysql) : mysql;
 
   return mysqlClient.createPool({
     connectionLimit: 2,
@@ -35,16 +36,18 @@ export const createDynamoClient = (
 ): DynamoDB => {
   const env = decodeOrThrow(NodeEnv, _env);
   const isProd = env.NODE_ENV === "production";
-  const params = isProd
-    ? undefined
-    : {
-        endpoint: "http://localstack:4566",
-        region: "eu-west-1",
-        credentials: {
-          accessKeyId: "test",
-          secretAccessKey: "test",
-        },
-      };
+  const isStaging = env.NODE_ENV === "staging";
+  const params =
+    isProd || isStaging
+      ? undefined
+      : {
+          endpoint: "http://localstack:4566",
+          region: "eu-west-1",
+          credentials: {
+            accessKeyId: "test",
+            secretAccessKey: "test",
+          },
+        };
 
   const dynamoClient = new AWS.DynamoDB(params);
 
@@ -56,16 +59,19 @@ export const createEventBridgeClient = (
 ) => {
   const env = decodeOrThrow(EventBridgeEnv, _env);
   const isProd = env.NODE_ENV === "production";
-  const params = isProd
-    ? { region: env.AWS_EVENTBRIDGE_REGION }
-    : {
-        endpoint: "http://localstack:4566",
-        region: "eu-west-1",
-        credentials: {
-          accessKeyId: "test",
-          secretAccessKey: "test",
-        },
-      };
+  const isStaging = env.NODE_ENV === "staging";
+
+  const params =
+    isProd || isStaging
+      ? { region: env.AWS_EVENTBRIDGE_REGION }
+      : {
+          endpoint: "http://localstack:4566",
+          region: "eu-west-1",
+          credentials: {
+            accessKeyId: "test",
+            secretAccessKey: "test",
+          },
+        };
 
   const client = new EventBridgeClient(params);
 
