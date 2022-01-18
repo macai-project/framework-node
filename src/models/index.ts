@@ -1,7 +1,11 @@
 import * as D from "io-ts/Decoder";
 
 export const NodeEnv = D.struct({
-  NODE_ENV: D.union(D.literal("production"), D.literal("development")),
+  NODE_ENV: D.union(
+    D.literal("production"),
+    D.literal("development"),
+    D.literal("test")
+  ),
 });
 
 export const AuroraEnv = D.intersect(NodeEnv)(

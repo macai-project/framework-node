@@ -137,22 +137,24 @@ export function init<
   dynamo,
   appSync,
   eventBridge,
+  env = process.env,
 }: {
   aurora?: A;
   dynamo?: D;
   appSync?: AS;
   eventBridge?: EB;
+  env?: Record<string, string | undefined>;
 }): InitResult<A, D, AS, EB> {
   Sentry.AWSLambda.init({
-    dsn: process.env.SENTRY_DSN,
-    environment: process.env.ENVIRONMENT,
+    dsn: env.SENTRY_DSN,
+    environment: env.ENVIRONMENT,
     tracesSampleRate: 1.0,
   });
 
-  const auroraPool = aurora && createAuroraPool();
-  const dynamoClient = dynamo && createDynamoClient();
-  const appSyncClient = appSync && createAppSyncClient();
-  const eventBridgeClient = eventBridge && createEventBridgeClient();
+  const auroraPool = aurora && createAuroraPool(env);
+  const dynamoClient = dynamo && createDynamoClient(env);
+  const appSyncClient = appSync && createAppSyncClient(env);
+  const eventBridgeClient = eventBridge && createEventBridgeClient(env);
 
   return {
     auroraPool,

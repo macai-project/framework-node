@@ -17,8 +17,10 @@ export type AWSAppSyncClient = {
   query: <T>(params: { query: any; variables: T }) => Promise<unknown>;
 };
 
-export const createAuroraPool = (): MySQLPool => {
-  const env = decodeOrThrow(AuroraEnv, process.env);
+export const createAuroraPool = (
+  _env: Record<string, string | undefined>
+): MySQLPool => {
+  const env = decodeOrThrow(AuroraEnv, _env);
 
   const mysqlClient =
     env.NODE_ENV === "production" ? AWSXRay.captureMySQL(mysql) : mysql;
@@ -28,8 +30,10 @@ export const createAuroraPool = (): MySQLPool => {
   });
 };
 
-export const createDynamoClient = (): DynamoDB => {
-  const env = decodeOrThrow(NodeEnv, process.env);
+export const createDynamoClient = (
+  _env: Record<string, string | undefined>
+): DynamoDB => {
+  const env = decodeOrThrow(NodeEnv, _env);
   const isProd = env.NODE_ENV === "production";
   const params = isProd
     ? undefined
@@ -47,8 +51,10 @@ export const createDynamoClient = (): DynamoDB => {
   return isProd ? AWSXRay.captureAWSClient(dynamoClient) : dynamoClient;
 };
 
-export const createEventBridgeClient = () => {
-  const env = decodeOrThrow(EventBridgeEnv, process.env);
+export const createEventBridgeClient = (
+  _env: Record<string, string | undefined>
+) => {
+  const env = decodeOrThrow(EventBridgeEnv, _env);
   const isProd = env.NODE_ENV === "production";
   const params = isProd
     ? { region: env.AWS_EVENTBRIDGE_REGION }
@@ -65,8 +71,10 @@ export const createEventBridgeClient = () => {
 
   return isProd ? AWSXRay.captureAWSClient(client) : client;
 };
-export const createAppSyncClient = () => {
-  const env = decodeOrThrow(AppSyncEnv, process.env);
+export const createAppSyncClient = (
+  _env: Record<string, string | undefined>
+) => {
+  const env = decodeOrThrow(AppSyncEnv, _env);
 
   const query = <T>({ query, variables }: { query: any; variables: T }) => {
     const endpoint = new url.URL(env.AWS_APPSYNC_URL).hostname.toString();
