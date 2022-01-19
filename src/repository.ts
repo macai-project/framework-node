@@ -1,8 +1,7 @@
 import https from "https";
-import AWS, { DynamoDB } from "aws-sdk";
+import _AWS, { DynamoDB } from "aws-sdk";
 import SignerV4 from "aws-sdk/lib/signers/v4";
-import { captureMySQL } from "aws-xray-sdk";
-import AWSXRay from "aws-xray-sdk";
+import { captureMySQL, captureAWSClient, captureAWS } from "aws-xray-sdk";
 import { EventBridgeClient } from "@aws-sdk/client-eventbridge";
 import mysql from "mysql";
 import url from "url";
@@ -17,6 +16,8 @@ export type AWSAppSyncClient = {
   query: <T>(params: { query: any; variables: T }) => Promise<unknown>;
 };
 
+const AWS = captureAWS(_AWS);
+
 export const createAuroraPool = (
   _env: Record<string, string | undefined>
 ): MySQLPool => {
@@ -24,7 +25,7 @@ export const createAuroraPool = (
   const isProd = env.NODE_ENV === "production";
   const isStaging = env.NODE_ENV === "staging";
 
-  const mysqlClient = isProd || isStaging ? AWSXRay.captureMySQL(mysql) : mysql;
+  const mysqlClient = isProd || isStaging ? captureMySQL(mysql) : mysql;
 
   return mysqlClient.createPool({
     connectionLimit: 2,
@@ -51,7 +52,7 @@ export const createDynamoClient = (
 
   const dynamoClient = new AWS.DynamoDB(params);
 
-  return isProd ? AWSXRay.captureAWSClient(dynamoClient) : dynamoClient;
+  return isProd || isStaging ? captureAWSClient(dynamoClient) : dynamoClient;
 };
 
 export const createEventBridgeClient = (

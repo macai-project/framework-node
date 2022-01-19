@@ -150,6 +150,8 @@ export function init<
     environment: env.ENVIRONMENT,
     tracesSampleRate: 1.0,
   });
+  console.log("runtime env: ", env);
+  console.log("process env: ", process.env);
 
   const auroraPool = aurora && createAuroraPool(env);
   const dynamoClient = dynamo && createDynamoClient(env);
