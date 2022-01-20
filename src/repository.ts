@@ -16,7 +16,9 @@ export type AWSAppSyncClient = {
   query: <T>(params: { query: any; variables: T }) => Promise<unknown>;
 };
 
-const AWS = captureAWS(_AWS);
+const isProd = process.env.NODE_ENV === "production";
+const isStaging = process.env.NODE_ENV === "staging";
+const AWS = isProd || isStaging ? captureAWS(_AWS) : _AWS;
 
 export const createAuroraPool = (
   _env: Record<string, string | undefined>
@@ -24,7 +26,6 @@ export const createAuroraPool = (
   const env = decodeOrThrow(AuroraEnv, _env);
   const isProd = env.NODE_ENV === "production";
   const isStaging = env.NODE_ENV === "staging";
-
   const mysqlClient = isProd || isStaging ? captureMySQL(mysql) : mysql;
 
   return mysqlClient.createPool({
