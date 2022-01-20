@@ -1,5 +1,5 @@
 import https from "https";
-import _AWS, { DynamoDB } from "aws-sdk";
+import AWS, { DynamoDB } from "aws-sdk";
 import SignerV4 from "aws-sdk/lib/signers/v4";
 import { captureMySQL, captureAWSClient, captureAWS } from "aws-xray-sdk";
 import { EventBridgeClient } from "@aws-sdk/client-eventbridge";
@@ -15,10 +15,6 @@ export type MySQLPool = captureMySQL.PatchedPool;
 export type AWSAppSyncClient = {
   query: <T>(params: { query: any; variables: T }) => Promise<unknown>;
 };
-
-const isProd = process.env.NODE_ENV === "production";
-const isStaging = process.env.NODE_ENV === "staging";
-const AWS = isProd || isStaging ? captureAWS(_AWS) : _AWS;
 
 export const createAuroraPool = (
   _env: Record<string, string | undefined>
