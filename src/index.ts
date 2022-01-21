@@ -99,7 +99,7 @@ export const _lambda =
           throw new Error(String(result.left));
         }
 
-        debug("handler succeded with payoad: ", result.right);
+        debug("handler succeded with payload: ", result.right);
 
         return result.right;
       });
