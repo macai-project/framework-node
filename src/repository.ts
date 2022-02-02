@@ -9,6 +9,7 @@ import "cross-fetch/polyfill";
 
 import { decodeOrThrow } from "./codecs/utils";
 import { AppSyncEnv, AuroraEnv, EventBridgeEnv, NodeEnv } from "./models";
+import { logger } from ".";
 
 export type Connection = captureMySQL.PatchedPoolConnection;
 export type MySQLPool = captureMySQL.PatchedPool;
@@ -79,6 +80,7 @@ export const createAppSyncClient = (
   _env: Record<string, string | undefined>
 ) => {
   const env = decodeOrThrow(AppSyncEnv, _env);
+  logger.info("AppSyncEnv decoded", env);
 
   const query = <T>({ query, variables }: { query: any; variables: T }) => {
     const endpoint = new url.URL(env.AWS_APPSYNC_URL).hostname.toString();

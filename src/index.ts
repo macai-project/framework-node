@@ -19,6 +19,7 @@ import { WrapHandler } from "./handler";
 import { traverseWithIndex } from "fp-ts/lib/Record";
 import { debug } from "./logger";
 import { EventBridgeClient } from "@aws-sdk/client-eventbridge";
+import { logger } from ".";
 
 type SchemaRecord<K extends string> = Record<K, C.Codec<unknown, any, any>>;
 type Config<O, A, K extends string> = {
@@ -150,8 +151,7 @@ export function init<
     environment: env.ENVIRONMENT,
     tracesSampleRate: 1.0,
   });
-  console.log("runtime env: ", env);
-  console.log("process env: ", process.env);
+  logger.info("runtime env: ", env);
 
   const auroraPool = aurora && createAuroraPool(env);
   const dynamoClient = dynamo && createDynamoClient(env);
