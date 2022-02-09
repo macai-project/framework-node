@@ -97,10 +97,14 @@ export const _lambda =
       // we throw in case of error
       return handlerTask().then((result) => {
         if (either.isLeft(result)) {
+          logger.info("[node-framework] handler failed!");
           throw new Error(String(result.left));
         }
 
-        debug("handler succeded with payload: ", result.right);
+        logger.info(
+          "[node-framework] handler succeded with payload: ",
+          result.right
+        );
 
         return result.right;
       });
