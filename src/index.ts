@@ -13,7 +13,7 @@ import {
 } from "./repository";
 import { parse } from "./parse";
 import { pipe } from "fp-ts/lib/function";
-import { either, taskEither } from "fp-ts";
+import { string, either, taskEither } from "fp-ts";
 import { draw } from "io-ts/lib/Decoder";
 import { WrapHandler } from "./handler";
 import { traverseWithIndex } from "fp-ts/lib/Record";
@@ -95,19 +95,28 @@ export const _lambda =
       );
 
       // we throw in case of error
-      return handlerTask().then((result) => {
-        if (either.isLeft(result)) {
-          logger.info("[node-framework] handler failed!");
-          throw new Error(String(result.left));
-        }
+      return handlerTask()
+        .then((result) => {
+          if (either.isLeft(result)) {
+            if (string.isString(result.left)) {
+              throw new Error(result.left);
+            } else {
+              logger.info("[node-framework] unknown error...: ", result.left);
+              throw new Error("handler unknown error");
+            }
+          }
 
-        logger.info(
-          "[node-framework] handler succeded with payload: ",
-          result.right
-        );
+          logger.info(
+            "[node-framework] handler succeded with payload: ",
+            result.right
+          );
 
-        return result.right;
-      });
+          return result.right;
+        })
+        .catch((e) => {
+          logger.info("[node-framework] handler failed!: ", e);
+          throw e;
+        });
     });
   };
 
