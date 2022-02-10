@@ -43,7 +43,7 @@ const getEnvValues = <K extends string>(
         parse(decoderRecord, { [key]: envRuntime[key] }),
         taskEither.fromEither,
         taskEither.map((v) => {
-          debug("parsed env successfully: ", v);
+          debug("parsed env successfully!");
           return v[key];
         })
       );
