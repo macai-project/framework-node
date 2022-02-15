@@ -1,7 +1,7 @@
 import https from "https";
 import AWS, { DynamoDB } from "aws-sdk";
 import SignerV4 from "aws-sdk/lib/signers/v4";
-import { captureMySQL, captureAWSClient, captureAWS } from "aws-xray-sdk";
+import { captureMySQL, captureAWSClient } from "aws-xray-sdk";
 import { EventBridgeClient } from "@aws-sdk/client-eventbridge";
 import mysql from "mysql";
 import url from "url";
@@ -49,6 +49,7 @@ export const createDynamoClient = (
       ? undefined
       : {
           endpoint: "http://localstack:4566",
+          maxRetries: 3,
           region: "eu-west-1",
           credentials: {
             accessKeyId: "test",
