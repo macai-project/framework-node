@@ -70,7 +70,7 @@ export const _lambda =
     }) => taskEither.TaskEither<unknown, R>
   ) => {
     return wrapperFunc((event: EventBridgeEvent<string, O>) => {
-      debug("parsing event: ", eventDetailSchema);
+      debug("parsing event: ", eventDetailSchema, event.detail);
 
       const parsedEvent = pipe(
         parse(eventDetailSchema, event.detail),
@@ -99,7 +99,7 @@ export const _lambda =
         .then((result) => {
           if (either.isLeft(result)) {
             if (string.isString(result.left)) {
-              throw new Error(result.left);
+              throw result.left;
             } else {
               logger.info("[node-framework] unknown error...: ", result.left);
               throw new Error("handler unknown error");
