@@ -35,8 +35,8 @@ export const decodeOrThrow = <O>(
  * Try to decode the payload with the given io-ts codec, if fails draw a human readable error
  *
  * ```
- * decodeOrThrow(t.interface({ name: t.string }), { name: "John"}) // { name: "John" }
- * decodeOrThrow(t.interface({ name: t.string }), { name: undefined }) // throw Error
+ * decodeOrDraw(t.interface({ name: t.string }), { name: "John"}, "Person") // right({ name: "John" })
+ * decodeOrDraw(t.interface({ name: t.string }), { name: undefined }, "Person") // left(`Wrong Person: ${D.draw(e)}`)
  * ```
  * @param codec An io-ts codec
  * @param payload the entity to decode
