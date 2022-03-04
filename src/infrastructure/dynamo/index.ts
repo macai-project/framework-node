@@ -31,9 +31,9 @@ export class DynamoInfrastructure implements DynamoIntrastructureInterface {
     this.tableName = env.AWS_DYNAMO_CATALOG_TABLE;
   }
 
-  public putDbRow(
+  public putDbRow = (
     i: TransactWriteItem
-  ): taskEither.TaskEither<string, TransactWriteItemsOutput> {
+  ): taskEither.TaskEither<string, TransactWriteItemsOutput> => {
     logger.info(`[node-framework] executing transaction ${JSON.stringify(i)}`);
 
     return taskEither.tryCatch(
@@ -58,9 +58,9 @@ export class DynamoInfrastructure implements DynamoIntrastructureInterface {
           }),
       (e) => String(e)
     );
-  }
+  };
 
-  public getDbRow(k: Key) {
+  public getDbRow = (k: Key) => {
     const result = () => {
       logger.info(
         `[node-framework] getting item with keys ${JSON.stringify(k)}`
@@ -93,5 +93,5 @@ export class DynamoInfrastructure implements DynamoIntrastructureInterface {
       (e) =>
         `[node-framework] Error fetching data from db: ${JSON.stringify(e)}`
     );
-  }
+  };
 }

@@ -1,7 +1,8 @@
 import { either, option, taskEither } from "fp-ts";
 import * as D from "io-ts/Decoder";
 import { decodeOrDraw } from "../../codecs/utils";
-import { CatalogIntrastructureInterface, EntityType } from "./model";
+import { CatalogIntrastructureInterface } from "./model";
+import { Entity, EntityType } from "./entities";
 import AWS from "aws-sdk";
 import { pipe } from "fp-ts/function";
 import {
@@ -29,8 +30,12 @@ export class CatalogInfrastructure
   private getDbPutTransaction(i: {
     id: string;
     relation_id: string;
-    source_data?: Record<string, unknown>;
-    target_data?: Record<string, unknown>;
+    source_data?: {
+      [key: string]: any;
+    };
+    target_data?: {
+      [key: string]: any;
+    };
   }): either.Either<string, TransactWriteItem> {
     const updates = pipe(
       [
@@ -168,8 +173,17 @@ export class CatalogInfrastructure
     return result;
   };
 
-  createEntity = () => {
-    return taskEither.left("not yet implemented");
+  createEntity = (id: string, e: Entity) => {
+    const transaction = this.getDbPutTransaction({
+      id: this.getDynamoId("it", e.type, id),
+      relation_id: this.getDynamoEntityTag("it", e.type),
+      source_data: e.body,
+    });
+
+    return pipe(
+      taskEither.fromEither(transaction),
+      taskEither.chain(this.putDbRow)
+    );
   };
   removeEntity = () => {
     return taskEither.left("not yet implemented");

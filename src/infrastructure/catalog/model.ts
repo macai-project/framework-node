@@ -1,39 +1,17 @@
 import { either, taskEither } from "fp-ts";
-import { Item, Category, Subcategory, Tag, Microcategory } from "./entities";
+import {
+  Item,
+  Category,
+  Subcategory,
+  Tag,
+  Microcategory,
+  EntityType,
+  Entity,
+} from "./entities";
 import {
   TransactWriteItem,
   TransactWriteItemsOutput,
 } from "aws-sdk/clients/dynamodb";
-
-export interface CategoryEntity {
-  type: "category";
-  body: Category;
-}
-export interface SubcategoryEntity {
-  type: "subcategory";
-  body: Subcategory;
-}
-export interface MicrocategoryEntity {
-  type: "microcategory";
-  body: Microcategory;
-}
-export interface ItemEntity {
-  type: "item";
-  body: Item;
-}
-export interface TagEntity {
-  type: "tag";
-  body: Tag;
-}
-
-export type Entity =
-  | CategoryEntity
-  | SubcategoryEntity
-  | MicrocategoryEntity
-  | ItemEntity
-  | TagEntity;
-
-export type EntityType = Entity["type"];
 
 export interface Replacement<V> {
   type: "replacement";
@@ -60,7 +38,10 @@ export interface CatalogIntrastructureInterface {
   }): taskEither.TaskEither<string, TransactWriteItemsOutput>;
 
   removeEntity(t: EntityType, id: string): taskEither.TaskEither<string, void>;
-  createEntity(e: Entity): taskEither.TaskEither<string, void>;
+  createEntity(
+    id: string,
+    e: Entity
+  ): taskEither.TaskEither<string, TransactWriteItemsOutput>;
   updateEntity<E extends Entity>(
     i: {
       type: E["type"];
