@@ -1,6 +1,9 @@
-import { either } from "fp-ts";
+import { either, taskEither } from "fp-ts";
 import { Item, Category, Subcategory, Tag, Microcategory } from "./entities";
-import { TransactWriteItem } from "aws-sdk/clients/dynamodb";
+import {
+  TransactWriteItem,
+  TransactWriteItemsOutput,
+} from "aws-sdk/clients/dynamodb";
 
 export interface CategoryEntity {
   type: "category";
@@ -50,19 +53,19 @@ export interface CatalogIntrastructureInterface {
   removeRelation(
     source: { type: EntityType; id: string },
     target: { type: EntityType; id: string }
-  ): either.Either<string, void>;
-  createRelation(
-    source: { type: EntityType; id: string },
-    target: { type: EntityType; id: string }
-  ): either.Either<string, void>;
+  ): taskEither.TaskEither<string, void>;
+  createRelation(i: {
+    relationSource: { type: EntityType; id: string };
+    relationTarget: { type: EntityType; id: string };
+  }): taskEither.TaskEither<string, TransactWriteItemsOutput>;
 
-  removeRelation(t: EntityType, id: string): either.Either<string, void>;
-  createEntity(e: Entity): either.Either<string, void>;
+  removeEntity(t: EntityType, id: string): taskEither.TaskEither<string, void>;
+  createEntity(e: Entity): taskEither.TaskEither<string, void>;
   updateEntity<E extends Entity>(
     i: {
       type: E["type"];
       id: string;
     },
     u: EntityUpdate<E["body"]>
-  ): either.Either<string, void>;
+  ): taskEither.TaskEither<string, void>;
 }
