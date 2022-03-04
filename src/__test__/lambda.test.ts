@@ -58,7 +58,7 @@ describe("lambda", () => {
     );
 
     expect(result).rejects.toBe(
-      `Incorrect Event Detail: required property "bar"
+      `[node-framework] Incorrect Event Detail: required property "bar"
 └─ cannot decode undefined, should be number`
     );
   });
@@ -107,7 +107,7 @@ describe("lambda", () => {
     );
 
     expect(result).rejects.toBe(
-      `Incorrect Env runtime: required property "RANDOM_ENV_VAR_2"
+      `[node-framework] incorrect Env runtime: required property "RANDOM_ENV_VAR_2"
 └─ cannot decode "foo", should be parsable into a number`
     );
   });
