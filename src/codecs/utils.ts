@@ -1,3 +1,5 @@
+import { either } from "fp-ts";
+import { pipe } from "fp-ts/lib/function";
 import * as D from "io-ts/Decoder";
 
 /**
@@ -15,13 +17,42 @@ import * as D from "io-ts/Decoder";
  */
 export const decodeOrThrow = <O>(
   codec: D.Decoder<unknown, O>,
-  payload: unknown
+  payload: unknown,
+  codecName?: string
 ): O => {
   const result = codec.decode(payload);
 
   if (result._tag === "Left") {
-    throw D.draw(result.left);
+    throw codecName
+      ? `Wrong ${codecName}: ${D.draw(result.left)}`
+      : D.draw(result.left);
   }
 
   return result.right;
+};
+
+/**
+ * Try to decode the payload with the given io-ts codec, if fails draw a human readable error
+ *
+ * ```
+ * decodeOrDraw(t.interface({ name: t.string }), { name: "John"}, "Person") // right({ name: "John" })
+ * decodeOrDraw(t.interface({ name: t.string }), { name: undefined }, "Person") // left(`Wrong Person: ${D.draw(e)}`)
+ * ```
+ * @param codec An io-ts codec
+ * @param payload the entity to decode
+ *
+ * @return the payload when successfully decoded or a human readable error
+ *
+ */
+export const decodeOrDraw = <O>(
+  codec: D.Decoder<unknown, O>,
+  payload: unknown,
+  codecName?: string
+): either.Either<string, O> => {
+  return pipe(
+    codec.decode(payload),
+    either.mapLeft((e) => {
+      return codecName ? `Wrong ${codecName}: ${D.draw(e)}` : D.draw(e);
+    })
+  );
 };

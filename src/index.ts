@@ -37,19 +37,19 @@ const getEnvValues = <K extends string>(
     envSchemaRecord,
     parTraverse((key, codec) => {
       const decoderRecord = D.struct({ [key]: codec });
-      debug("parsing env: ", envSchemaRecord);
+      debug("[node-framework] parsing env: ", envSchemaRecord);
 
       return pipe(
         parse(decoderRecord, { [key]: envRuntime[key] }),
         taskEither.fromEither,
         taskEither.map((v) => {
-          debug("parsed env successfully!");
+          debug("[node-framework] parsed env successfully!");
           return v[key];
         })
       );
     }),
     taskEither.mapLeft((e) => {
-      return `Incorrect Env runtime: ${draw(e)}`;
+      return `[node-framework] incorrect Env runtime: ${draw(e)}`;
     })
   );
 };
@@ -70,16 +70,18 @@ export const _lambda =
     }) => taskEither.TaskEither<unknown, R>
   ) => {
     return wrapperFunc((event: EventBridgeEvent<string, O>) => {
-      debug("parsing event: ", eventDetailSchema, event.detail);
+      debug("[node-framework] parsing event: ", event.detail);
 
       const parsedEvent = pipe(
         parse(eventDetailSchema, event.detail),
         taskEither.fromEither,
         taskEither.map((v) => {
-          debug("parsed event successfully: ", v);
+          debug("[node-framework] parsed event successfully: ", v);
           return v;
         }),
-        taskEither.mapLeft((e) => `Incorrect Event Detail: ${draw(e)}`)
+        taskEither.mapLeft(
+          (e) => `[node-framework] Incorrect Event Detail: ${draw(e)}`
+        )
       );
 
       // we build the task making sure to have a readable error if the decoding fails
@@ -102,7 +104,7 @@ export const _lambda =
               throw result.left;
             } else {
               logger.info("[node-framework] unknown error...: ", result.left);
-              throw new Error("handler unknown error");
+              throw new Error("[node-framework] handler unknown error");
             }
           }
 
