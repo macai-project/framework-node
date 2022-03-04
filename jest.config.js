@@ -10,6 +10,6 @@ module.exports = {
   },
   testMatch: ["**/+(*.)*(test).ts"],
   moduleFileExtensions: ["ts", "tsx", "js", "jsx"],
-  name: "task-cache",
-  displayName: "task-cache",
-}
+  name: "framework-node",
+  displayName: "framework-node",
+};

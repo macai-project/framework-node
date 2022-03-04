@@ -57,8 +57,7 @@ describe("lambda", () => {
       callbackMock
     );
 
-    expect(result).rejects.toHaveProperty(
-      "message",
+    expect(result).rejects.toBe(
       `Incorrect Event Detail: required property "bar"
 └─ cannot decode undefined, should be number`
     );
@@ -79,7 +78,7 @@ describe("lambda", () => {
       callbackMock
     );
 
-    expect(result).rejects.toHaveProperty("message", "utter failure....");
+    expect(result).rejects.toBe("utter failure....");
   });
 
   it("given lambda, when handler is successful and event has correct payload but env is incorrect, lambda returns the expected error", () => {
@@ -107,8 +106,7 @@ describe("lambda", () => {
       callbackMock
     );
 
-    expect(result).rejects.toHaveProperty(
-      "message",
+    expect(result).rejects.toBe(
       `Incorrect Env runtime: required property "RANDOM_ENV_VAR_2"
 └─ cannot decode "foo", should be parsable into a number`
     );
