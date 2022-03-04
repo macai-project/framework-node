@@ -8,4 +8,4 @@ interface _Tag<T extends string, B = never> {
   body: B;
 }
 
-export type Tag = _Tag<"in-evidence">;
+export type Tag = _Tag<"in-evidence", Partial<{ order: number }>>;
