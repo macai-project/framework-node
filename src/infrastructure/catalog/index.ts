@@ -167,8 +167,8 @@ export class CatalogInfrastructure
             i.relationTarget.type,
             i.relationTarget.id
           ),
-          source_data: sourceData,
-          target_data: targetData,
+          source_data: sourceData.source_data,
+          target_data: targetData.source_data,
         })
       )
     );
