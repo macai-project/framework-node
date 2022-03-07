@@ -85,6 +85,8 @@ export class CatalogInfrastructure
       },
     };
 
+    console.log("[node-framework] created transaction", transaction);
+
     return either.right(transaction);
   }
 
