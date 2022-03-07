@@ -43,14 +43,14 @@ export class CatalogInfrastructure
           ? {
               expressionAttribute: "source",
               fieldName: "source_data",
-              data: AWS.DynamoDB.Converter.marshall(i.source_data),
+              data: { M: AWS.DynamoDB.Converter.marshall(i.source_data) },
             }
           : undefined,
         i.target_data
           ? {
               expressionAttribute: "target",
               fieldName: "target_data",
-              data: AWS.DynamoDB.Converter.marshall(i.target_data),
+              data: { M: AWS.DynamoDB.Converter.marshall(i.target_data) },
             }
           : undefined,
       ],
@@ -78,7 +78,7 @@ export class CatalogInfrastructure
         ExpressionAttributeValues: updates.reduce(
           (acc, v) => ({
             ...acc,
-            [v.expressionAttribute]: v.data,
+            [`:${v.expressionAttribute}`]: v.data,
           }),
           {}
         ),
