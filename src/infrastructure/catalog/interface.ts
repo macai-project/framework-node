@@ -7,7 +7,7 @@ import {
   Microcategory,
   EntityType,
   Entity,
-} from "./entities";
+} from "./models/entities";
 import {
   TransactWriteItem,
   TransactWriteItemsOutput,
@@ -48,5 +48,5 @@ export interface CatalogIntrastructureInterface {
       id: string;
     },
     u: EntityUpdate<E["body"]>
-  ): taskEither.TaskEither<string, void>;
+  ): taskEither.TaskEither<string, TransactWriteItemsOutput>;
 }

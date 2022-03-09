@@ -14,7 +14,8 @@
     "prepublishOnly": "npm run build",
     "release": "release-it",
     "test": "jest --config=jest.config.js --passWithNoTests",
-    "test:w": "jest --config=jest.config.js --passWithNoTests --watch"
+    "test:w": "jest --config=jest.config.js --passWithNoTests --watch",
+    "compile:w": "tsc --noEmit --watch --project tsconfig.json"
   },
   "dependencies": {
     "@aws-sdk/client-eventbridge": "^3.47.0",
