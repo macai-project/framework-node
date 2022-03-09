@@ -1,9 +1,16 @@
+import * as D from "io-ts/Decoder";
 import { EntityState } from "./common";
 
-export interface Category {
-  id: string;
-  name: string;
-  color?: string;
-  order?: number;
-  state: EntityState;
-}
+export const Category = D.intersect(
+  D.struct({
+    id: D.string,
+    name: D.string,
+    state: EntityState,
+  })
+)(
+  D.partial({
+    color: D.string,
+    order: D.number,
+  })
+);
+export type Category = D.TypeOf<typeof Category>;

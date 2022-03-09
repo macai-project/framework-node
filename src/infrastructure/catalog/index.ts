@@ -1,10 +1,18 @@
 import { either, option, taskEither } from "fp-ts";
 import * as D from "io-ts/Decoder";
 import { decodeOrDraw } from "../../codecs/utils";
-import { CatalogIntrastructureInterface } from "./model";
-import { Entity, EntityType } from "./entities";
+import { CatalogIntrastructureInterface, EntityUpdate } from "./model";
+import {
+  Category,
+  Entity,
+  EntityType,
+  Item,
+  Microcategory,
+  Subcategory,
+  Tag,
+} from "./entities";
 import AWS from "aws-sdk";
-import { pipe } from "fp-ts/function";
+import { absurd, pipe } from "fp-ts/function";
 import {
   TransactWriteItem,
   TransactWriteItemsOutput,
@@ -12,8 +20,18 @@ import {
 import { filterMap } from "fp-ts/Array";
 import { traverse } from "fp-ts/lib/Record";
 import { DynamoInfrastructure } from "../dynamo";
+import { sequence } from "fp-ts/lib/Array";
+import { isString } from "fp-ts/lib/string";
+import { sequenceS } from "fp-ts/lib/Apply";
 
 const parTraverse = traverse(taskEither.ApplicativePar);
+const parSequence = sequenceS(taskEither.ApplicativePar);
+
+export const TableEntryIDs = D.struct({
+  id: D.string,
+  relation_id: D.string,
+});
+export type TableEntryIDs = D.TypeOf<typeof TableEntryIDs>;
 
 export class CatalogInfrastructure
   extends DynamoInfrastructure
@@ -100,9 +118,156 @@ export class CatalogInfrastructure
 
     return pipe(
       taskEither.fromEither(transaction),
-      taskEither.chain(this.putDbRow)
+      taskEither.chain((t) => this.putDbRows([t]))
     );
   }
+
+  private getDbRowIds(i: {
+    type: "id" | "relation_id";
+    value: string;
+  }): taskEither.TaskEither<string, TableEntryIDs[]> {
+    const getDBRows = this.query({
+      IndexName: i.type === "id" ? undefined : "relation_id-id",
+      TableName: this.tableName,
+      ExpressionAttributeValues: {
+        ":k": { S: i.value },
+      },
+      KeyConditionExpression: i.type === "id" ? "id = :k" : "relation_id = :k",
+      ProjectionExpression: "id, relation_id",
+    });
+
+    return pipe(
+      getDBRows,
+      taskEither.chain((v) =>
+        taskEither.fromEither(D.array(TableEntryIDs).decode(v))
+      ),
+      taskEither.mapLeft((v) => D.draw(v))
+    );
+  }
+
+  private getEntityDecoder = <E extends Entity>(
+    type: E["type"]
+  ): D.Decoder<unknown, E["body"]> => {
+    switch (type) {
+      case "category":
+        return Category;
+      case "subcategory":
+        return Subcategory;
+      case "microcategory":
+        return Microcategory;
+      case "item":
+        return Item;
+      case "tag":
+        return Tag;
+      default:
+        return absurd(type);
+    }
+  };
+
+  private applyUpdater = <E extends Entity>(
+    updater: EntityUpdate<E["body"]>,
+    currentBody: E["body"]
+  ): E["body"] => {
+    switch (updater.type) {
+      case "replacement":
+        return updater.newValue;
+      case "partialUpdate":
+        return updater.update(currentBody);
+    }
+  };
+
+  private getUpdatedBody = <E extends Entity>(
+    itemId: string,
+    type: E["type"],
+    updater: EntityUpdate<E["body"]>
+  ): taskEither.TaskEither<string, E["body"]> => {
+    const decoder = this.getEntityDecoder(type);
+    const dbRow = this.getDbRow({
+      id: {
+        S: itemId,
+      },
+      relation_id: {
+        S: this.getDynamoEntityTag("it", type),
+      },
+    });
+
+    return pipe(
+      dbRow,
+      taskEither.chainW((v) => taskEither.fromEither(decoder.decode(v))),
+      taskEither.bimap(
+        (e) => (isString(e) ? e : D.draw(e)),
+        (v) => this.applyUpdater(updater, v)
+      )
+    );
+  };
+
+  private getEntityUpdateOperations = <E extends Entity>(
+    itemId: string,
+    type: E["type"],
+    updater: EntityUpdate<E["body"]>
+  ): taskEither.TaskEither<string, TransactWriteItem[]> => {
+    const updatedBody = this.getUpdatedBody(itemId, type, updater);
+    // outward directed relations and items entities
+    const outwardRelations = this.getDbRowIds({ type: "id", value: itemId });
+    // inward directed relations
+    const inwardRelations = this.getDbRowIds({
+      type: "relation_id",
+      value: itemId,
+    });
+
+    return pipe(
+      parSequence({ updatedBody, outwardRelations, inwardRelations }),
+      taskEither.map(({ updatedBody, outwardRelations, inwardRelations }) => {
+        const outwardTransactions = outwardRelations.map(
+          ({ id, relation_id }) => {
+            const operation: TransactWriteItem = {
+              Update: {
+                TableName: this.tableName,
+                Key: {
+                  id: {
+                    S: id,
+                  },
+                  relation_id: {
+                    S: relation_id,
+                  },
+                },
+                UpdateExpression: "set source_data = :x",
+                ExpressionAttributeValues: {
+                  ":x": { M: AWS.DynamoDB.Converter.marshall(updatedBody) },
+                },
+              },
+            };
+            return operation;
+          }
+        );
+
+        const inwardTransactions = inwardRelations.map(
+          ({ id, relation_id }) => {
+            const operation: TransactWriteItem = {
+              Update: {
+                TableName: this.tableName,
+                Key: {
+                  id: {
+                    S: id,
+                  },
+                  relation_id: {
+                    S: relation_id,
+                  },
+                },
+                UpdateExpression: "set target_data = :x",
+                ExpressionAttributeValues: {
+                  ":x": { M: AWS.DynamoDB.Converter.marshall(updatedBody) },
+                },
+              },
+            };
+            return operation;
+          }
+        );
+
+        return outwardTransactions.concat(inwardTransactions);
+      })
+    );
+  };
 
   private getEntityOrRelation(id: string, relation_id: string) {
     return this.getDbRow({
@@ -184,13 +349,25 @@ export class CatalogInfrastructure
 
     return pipe(
       taskEither.fromEither(transaction),
-      taskEither.chain(this.putDbRow)
+      taskEither.chain((t) => this.putDbRows([t]))
     );
   };
   removeEntity = () => {
     return taskEither.left("not yet implemented");
   };
-  updateEntity = () => {
-    return taskEither.left("not yet implemented");
+
+  updateEntity = <E extends Entity>(
+    entity: {
+      type: E["type"];
+      id: string;
+    },
+    updater: EntityUpdate<E["body"]>
+  ) => {
+    const rowsToUpdate = this.getEntityUpdateOperations(
+      this.getDynamoId("it", entity.type, entity.id),
+      entity.type,
+      updater
+    );
+    return pipe(rowsToUpdate, taskEither.chain(this.putDbRows));
   };
 }

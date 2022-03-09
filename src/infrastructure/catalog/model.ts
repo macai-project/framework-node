@@ -48,5 +48,5 @@ export interface CatalogIntrastructureInterface {
       id: string;
     },
     u: EntityUpdate<E["body"]>
-  ): taskEither.TaskEither<string, void>;
+  ): taskEither.TaskEither<string, TransactWriteItemsOutput>;
 }

@@ -4,16 +4,18 @@ import { logger } from "../..";
 import { decodeOrThrow } from "../../codecs/utils";
 import AWS from "aws-sdk";
 import {
+  QueryInput,
   TransactWriteItem,
   TransactWriteItemsOutput,
 } from "aws-sdk/clients/dynamodb";
 import { Key } from "aws-sdk/clients/dynamodb";
 
 interface DynamoIntrastructureInterface {
-  putDbRow(
-    i: TransactWriteItem
+  putDbRows(
+    i: TransactWriteItem[]
   ): taskEither.TaskEither<string, TransactWriteItemsOutput>;
   getDbRow(k: Key): taskEither.TaskEither<string, unknown>;
+  query(k: QueryInput): taskEither.TaskEither<unknown, unknown>;
 }
 
 export class DynamoInfrastructure implements DynamoIntrastructureInterface {
@@ -31,8 +33,8 @@ export class DynamoInfrastructure implements DynamoIntrastructureInterface {
     this.tableName = env.AWS_DYNAMO_CATALOG_TABLE;
   }
 
-  public putDbRow = (
-    i: TransactWriteItem
+  public putDbRows = (
+    i: TransactWriteItem[]
   ): taskEither.TaskEither<string, TransactWriteItemsOutput> => {
     logger.info(`[node-framework] executing transaction ${JSON.stringify(i)}`);
 
@@ -40,7 +42,7 @@ export class DynamoInfrastructure implements DynamoIntrastructureInterface {
       () =>
         this.appDynamoRepository
           .transactWriteItems({
-            TransactItems: [i],
+            TransactItems: i,
           })
           .promise()
           .then((r) => {
@@ -48,11 +50,11 @@ export class DynamoInfrastructure implements DynamoIntrastructureInterface {
               throw r.$response.error;
             }
 
-            logger.info("[node-framework] putDbRow success: ", r);
+            logger.info("[node-framework] putDbRows success: ", r);
             return r.$response.data as TransactWriteItemsOutput;
           })
           .catch((e) => {
-            logger.info("[node-framework] putDbRow error: ", e);
+            logger.info("[node-framework] putDbRows error: ", e);
 
             throw e;
           }),
@@ -93,5 +95,29 @@ export class DynamoInfrastructure implements DynamoIntrastructureInterface {
       (e) =>
         `[node-framework] Error fetching data from db: ${JSON.stringify(e)}`
     );
+  };
+
+  public query = (q: QueryInput) => {
+    logger.info(`[node-framework] querying DB ${q}}`);
+
+    const queryDB = () =>
+      this.appDynamoRepository
+        .query(q)
+        .promise()
+        .then((result) => {
+          return result.Items
+            ? result.Items.map((v) => AWS.DynamoDB.Converter.unmarshall(v))
+            : undefined;
+        })
+        .then((r) => {
+          logger.info(`[node-framework] successfully query`, r);
+
+          return r;
+        });
+
+    return taskEither.tryCatch(queryDB, (e: any) => {
+      logger.info(`[node-framework] failed querying the DB! ${e?.message}`, e);
+      return e;
+    });
   };
 }
