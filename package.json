@@ -1,6 +1,6 @@
 {
   "name": "@macai-tech/framework-node",
-  "version": "1.4.2-beta.40",
+  "version": "1.4.2-beta.41",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "repository": {
