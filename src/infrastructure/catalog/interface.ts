@@ -7,7 +7,7 @@ import {
   Microcategory,
   EntityType,
   Entity,
-} from "./entities";
+} from "./models/entities";
 import {
   TransactWriteItem,
   TransactWriteItemsOutput,

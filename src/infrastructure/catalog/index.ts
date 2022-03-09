@@ -1,7 +1,7 @@
 import { either, option, taskEither } from "fp-ts";
 import * as D from "io-ts/Decoder";
 import { decodeOrDraw } from "../../codecs/utils";
-import { CatalogIntrastructureInterface, EntityUpdate } from "./model";
+import { CatalogIntrastructureInterface, EntityUpdate } from "./interface";
 import {
   Category,
   Entity,
@@ -10,7 +10,7 @@ import {
   Microcategory,
   Subcategory,
   Tag,
-} from "./entities";
+} from "./models/entities";
 import AWS from "aws-sdk";
 import { absurd, pipe } from "fp-ts/function";
 import {
@@ -23,6 +23,7 @@ import { DynamoInfrastructure } from "../dynamo";
 import { sequence } from "fp-ts/lib/Array";
 import { isString } from "fp-ts/lib/string";
 import { sequenceS } from "fp-ts/lib/Apply";
+import { Countries } from "./models/Countries";
 
 const parTraverse = traverse(taskEither.ApplicativePar);
 const parSequence = sequenceS(taskEither.ApplicativePar);
@@ -187,7 +188,7 @@ export class CatalogInfrastructure
         S: itemId,
       },
       relation_id: {
-        S: this.getDynamoEntityTag("it", type),
+        S: this.getDynamoEntityTag(Countries.it, type),
       },
     });
 
@@ -319,16 +320,16 @@ export class CatalogInfrastructure
   }) => {
     const result = pipe(
       { sourceData: i.relationSource, targetData: i.relationTarget },
-      parTraverse((v) => this.getDBRowSourceData("it", v.type, v.id)),
+      parTraverse((v) => this.getDBRowSourceData(Countries.it, v.type, v.id)),
       taskEither.chain(({ sourceData, targetData }) =>
         this.putRelation({
           id: this.getDynamoId(
-            "it",
+            Countries.it,
             i.relationSource.type,
             i.relationSource.id
           ),
           relation_id: this.getDynamoId(
-            "it",
+            Countries.it,
             i.relationTarget.type,
             i.relationTarget.id
           ),
@@ -342,8 +343,8 @@ export class CatalogInfrastructure
 
   createEntity = (id: string, e: Entity) => {
     const transaction = this.getDbPutTransaction({
-      id: this.getDynamoId("it", e.type, id),
-      relation_id: this.getDynamoEntityTag("it", e.type),
+      id: this.getDynamoId(Countries.it, e.type, id),
+      relation_id: this.getDynamoEntityTag(Countries.it, e.type),
       source_data: e.body,
     });
 
@@ -364,7 +365,7 @@ export class CatalogInfrastructure
     updater: EntityUpdate<E["body"]>
   ) => {
     const rowsToUpdate = this.getEntityUpdateOperations(
-      this.getDynamoId("it", entity.type, entity.id),
+      this.getDynamoId(Countries.it, entity.type, entity.id),
       entity.type,
       updater
     );
