@@ -6,7 +6,7 @@ export const Tag = D.union(
     id: D.string,
     name: D.string,
     type: D.literal("in-evidence"),
-    state: EntityState,
+    state: D.union(EntityState, D.literal("coming-soon")),
     body: D.partial({ order: D.number }),
   })
 );
