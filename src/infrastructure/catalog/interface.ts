@@ -23,9 +23,10 @@ export interface PartialUpdate<V> {
 }
 export interface CustomUpdate {
   type: "customUpdate";
+  values: Record<string, any>;
 }
 
-export type EntityUpdate<V> = Replacement<V> | PartialUpdate<V>;
+export type EntityUpdate<V> = Replacement<V> | PartialUpdate<V> | CustomUpdate;
 
 export interface CatalogIntrastructureInterface {
   removeRelation(

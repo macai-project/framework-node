@@ -1,7 +1,21 @@
-import { either, option, taskEither } from "fp-ts";
+import {
+  array,
+  either,
+  number,
+  option,
+  record,
+  string,
+  taskEither,
+} from "fp-ts";
 import * as D from "io-ts/Decoder";
 import { decodeOrDraw } from "../../codecs/utils";
-import { CatalogIntrastructureInterface, EntityUpdate } from "./interface";
+import {
+  CatalogIntrastructureInterface,
+  CustomUpdate,
+  EntityUpdate,
+  PartialUpdate,
+  Replacement,
+} from "./interface";
 import {
   Category,
   Entity,
@@ -14,6 +28,7 @@ import {
 import AWS from "aws-sdk";
 import { absurd, pipe } from "fp-ts/function";
 import {
+  ExpressionAttributeValueMap,
   TransactWriteItem,
   TransactWriteItemsOutput,
 } from "aws-sdk/clients/dynamodb";
@@ -166,7 +181,7 @@ export class CatalogInfrastructure
   };
 
   private applyUpdater = <E extends Entity>(
-    updater: EntityUpdate<E["body"]>,
+    updater: Replacement<E["body"]> | PartialUpdate<E["body"]>,
     currentBody: E["body"]
   ): E["body"] => {
     switch (updater.type) {
@@ -180,7 +195,7 @@ export class CatalogInfrastructure
   private getUpdatedBody = <E extends Entity>(
     itemId: string,
     type: E["type"],
-    updater: EntityUpdate<E["body"]>
+    updater: Replacement<E["body"]> | PartialUpdate<E["body"]>
   ): taskEither.TaskEither<string, E["body"]> => {
     const decoder = this.getEntityDecoder(type);
     const dbRow = this.getDbRow({
@@ -204,10 +219,108 @@ export class CatalogInfrastructure
     );
   };
 
+  private getTransactionFromCustomUpdate = ({
+    id,
+    relation_id,
+    customUpdate,
+  }: {
+    id: string;
+    relation_id: string;
+    customUpdate: CustomUpdate;
+  }): TransactWriteItem => {
+    const updatesAsString = pipe(
+      Object.keys(customUpdate.values),
+      array.map((k) => `${k} = :${k}`)
+    );
+    const updateExpression = `SET ${updatesAsString.join(", ")}`;
+    const attributeValues = pipe(
+      customUpdate.values,
+      record.reduceWithIndex(string.Ord)(
+        {} as ExpressionAttributeValueMap,
+        (k, b, a) => ({
+          ...b,
+          [`:${k}`]: AWS.DynamoDB.Converter.input(a),
+        })
+      )
+    );
+
+    return {
+      Update: {
+        TableName: this.tableName,
+        Key: {
+          id: {
+            S: id,
+          },
+          relation_id: {
+            S: relation_id,
+          },
+        },
+        UpdateExpression: updateExpression,
+        ExpressionAttributeValues: attributeValues,
+      },
+    };
+  };
+
+  /**
+   * [IDEMPOTENT] get only the row IDS to be updated from the db then applies the updates
+   *
+   * @param itemId
+   * @param type
+   * @param updater
+   * @returns the TransactWriteItem operations to perform on the DB
+   */
+  private getEntityCustomUpdateOperations = <E extends Entity>(
+    itemId: string,
+    customUpdate: CustomUpdate
+  ): taskEither.TaskEither<string, TransactWriteItem[]> => {
+    const outwardRelations = this.getDbRowIds({ type: "id", value: itemId });
+
+    // inward directed relations
+    const inwardRelations = this.getDbRowIds({
+      type: "relation_id",
+      value: itemId,
+    });
+
+    return pipe(
+      parSequence({ outwardRelations, inwardRelations }),
+      taskEither.map(({ outwardRelations, inwardRelations }) => {
+        const outwardTransactions = outwardRelations.map(
+          ({ id, relation_id }) => {
+            return this.getTransactionFromCustomUpdate({
+              id,
+              relation_id,
+              customUpdate,
+            });
+          }
+        );
+
+        const inwardTransactions = inwardRelations.map(
+          ({ id, relation_id }) => {
+            return this.getTransactionFromCustomUpdate({
+              id,
+              relation_id,
+              customUpdate,
+            });
+          }
+        );
+
+        return outwardTransactions.concat(inwardTransactions);
+      })
+    );
+  };
+
+  /**
+   * [NOT-IDEMPOTENT] get the entity data from the db and applies the selected update
+   *
+   * @param itemId
+   * @param type
+   * @param updater
+   * @returns the TransactWriteItem operations to perform on the DB
+   */
   private getEntityUpdateOperations = <E extends Entity>(
     itemId: string,
     type: E["type"],
-    updater: EntityUpdate<E["body"]>
+    updater: Replacement<E["body"]> | PartialUpdate<E["body"]>
   ): taskEither.TaskEither<string, TransactWriteItem[]> => {
     const updatedBody = this.getUpdatedBody(itemId, type, updater);
     // outward directed relations and items entities
@@ -359,6 +472,33 @@ export class CatalogInfrastructure
     return taskEither.left("not yet implemented");
   };
 
+  private getTransactionsForUpdater = <E extends Entity>(
+    entity: {
+      type: E["type"];
+      id: string;
+    },
+    updater: EntityUpdate<Entity["body"]>
+  ) => {
+    const updateType = updater.type;
+
+    switch (updateType) {
+      case "partialUpdate":
+      case "replacement": {
+        return this.getEntityUpdateOperations(
+          this.getDynamoId(Countries.it, entity.type, entity.id),
+          entity.type,
+          updater
+        );
+      }
+      case "customUpdate": {
+        return this.getEntityCustomUpdateOperations(entity.id, updater);
+      }
+      default:
+        absurd(updateType);
+        return updateType;
+    }
+  };
+
   updateEntity = <E extends Entity>(
     entity: {
       type: E["type"];
@@ -366,11 +506,8 @@ export class CatalogInfrastructure
     },
     updater: EntityUpdate<E["body"]>
   ) => {
-    const rowsToUpdate = this.getEntityUpdateOperations(
-      this.getDynamoId(Countries.it, entity.type, entity.id),
-      entity.type,
-      updater
-    );
+    const rowsToUpdate = this.getTransactionsForUpdater(entity, updater);
+
     return pipe(rowsToUpdate, taskEither.chain(this.putDbRows));
   };
 }
