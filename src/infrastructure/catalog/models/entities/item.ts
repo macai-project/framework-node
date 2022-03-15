@@ -43,6 +43,12 @@ const ItemMandatory = {
   name: D.string,
 };
 
+export const ItemProps = {
+  ...ItemOptional,
+  ...ItemPublishedMandatory,
+  ...ItemMandatory,
+};
+
 const DraftedItemMandatory = D.intersect(
   D.struct({
     state: D.literal("draft"),
