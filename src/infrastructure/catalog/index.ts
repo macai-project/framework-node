@@ -194,7 +194,9 @@ export class CatalogInfrastructure
 
     return pipe(
       dbRow,
-      taskEither.chainW((v) => taskEither.fromEither(decoder.decode(v))),
+      taskEither.chainW((v) =>
+        taskEither.fromEither(decoder.decode(v?.source_data))
+      ),
       taskEither.bimap(
         (e) => (isString(e) ? e : D.draw(e)),
         (v) => this.applyUpdater(updater, v)
