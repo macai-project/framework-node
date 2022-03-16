@@ -92,7 +92,7 @@ export class CatalogInfrastructure
     );
 
     if (updates.length === 0) {
-      return either.left("[node-framework] no updates defined!");
+      return either.left("no updates defined!");
     }
 
     const transaction: TransactWriteItem = {
@@ -119,7 +119,7 @@ export class CatalogInfrastructure
       },
     };
 
-    console.log("[node-framework] created transaction", transaction);
+    console.log("created transaction", transaction);
 
     return either.right(transaction);
   }

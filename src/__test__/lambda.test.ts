@@ -78,7 +78,7 @@ describe("lambda", () => {
       callbackMock
     );
 
-    expect(result).rejects.toBe("utter failure....");
+    expect(result).rejects.toBe("[node-framework] utter failure....");
   });
 
   it("given lambda, when handler is successful and event has correct payload but env is incorrect, lambda returns the expected error", () => {

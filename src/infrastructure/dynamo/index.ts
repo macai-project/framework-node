@@ -9,6 +9,7 @@ import {
   TransactWriteItemsOutput,
 } from "aws-sdk/clients/dynamodb";
 import { Key } from "aws-sdk/clients/dynamodb";
+import { debug } from "../../logger";
 
 interface DynamoIntrastructureInterface {
   putDbRows(
@@ -36,7 +37,7 @@ export class DynamoInfrastructure implements DynamoIntrastructureInterface {
   public putDbRows = (
     i: TransactWriteItem[]
   ): taskEither.TaskEither<string, TransactWriteItemsOutput> => {
-    logger.info(`[node-framework] executing transaction ${JSON.stringify(i)}`);
+    debug(`executing transaction ${JSON.stringify(i)}`);
 
     return taskEither.tryCatch(
       () =>
@@ -50,11 +51,11 @@ export class DynamoInfrastructure implements DynamoIntrastructureInterface {
               throw r.$response.error;
             }
 
-            logger.info("[node-framework] putDbRows success: ", r);
+            debug("putDbRows success: ", r);
             return r.$response.data as TransactWriteItemsOutput;
           })
           .catch((e) => {
-            logger.info("[node-framework] putDbRows error: ", e);
+            debug("putDbRows error: ", e);
 
             throw e;
           }),
@@ -64,9 +65,7 @@ export class DynamoInfrastructure implements DynamoIntrastructureInterface {
 
   public getDbRow = (k: Key) => {
     const result = () => {
-      logger.info(
-        `[node-framework] getting item with keys ${JSON.stringify(k)}`
-      );
+      debug(`getting item with keys ${JSON.stringify(k)}`);
 
       return this.appDynamoRepository
         .getItem({
@@ -79,10 +78,7 @@ export class DynamoInfrastructure implements DynamoIntrastructureInterface {
             const unmarshalledResult = AWS.DynamoDB.Converter.unmarshall(
               result.Item
             );
-            logger.info(
-              "[node-framework] row fetched from DB: ",
-              unmarshalledResult
-            );
+            debug("row fetched from DB: ", unmarshalledResult);
             return unmarshalledResult;
           }
 
@@ -92,13 +88,12 @@ export class DynamoInfrastructure implements DynamoIntrastructureInterface {
 
     return taskEither.tryCatch(
       result,
-      (e) =>
-        `[node-framework] Error fetching data from db: ${JSON.stringify(e)}`
+      (e) => `Error fetching data from db: ${JSON.stringify(e)}`
     );
   };
 
   public query = (q: QueryInput) => {
-    logger.info(`[node-framework] querying DB ${q}}`);
+    debug(`querying DB ${q}}`);
 
     const queryDB = () =>
       this.appDynamoRepository
@@ -110,13 +105,13 @@ export class DynamoInfrastructure implements DynamoIntrastructureInterface {
             : undefined;
         })
         .then((r) => {
-          logger.info(`[node-framework] successfully query`, r);
+          debug(`successfully query`, r);
 
           return r;
         });
 
     return taskEither.tryCatch(queryDB, (e: any) => {
-      logger.info(`[node-framework] failed querying the DB! ${e?.message}`, e);
+      debug(`failed querying the DB! ${e?.message}`, e);
       return e;
     });
   };

@@ -37,19 +37,19 @@ const getEnvValues = <K extends string>(
     envSchemaRecord,
     parTraverse((key, codec) => {
       const decoderRecord = D.struct({ [key]: codec });
-      debug("[node-framework] parsing env: ", envSchemaRecord);
+      debug("parsing env: ", envSchemaRecord);
 
       return pipe(
         parse(decoderRecord, { [key]: envRuntime[key] }),
         taskEither.fromEither,
         taskEither.map((v) => {
-          debug("[node-framework] parsed env successfully!");
+          debug("parsed env successfully!");
           return v[key];
         })
       );
     }),
     taskEither.mapLeft((e) => {
-      return `[node-framework] incorrect Env runtime: ${draw(e)}`;
+      return `incorrect Env runtime: ${draw(e)}`;
     })
   );
 };
@@ -70,18 +70,16 @@ export const _lambda =
     }) => taskEither.TaskEither<unknown, R>
   ) => {
     return wrapperFunc((event: EventBridgeEvent<string, O>) => {
-      debug("[node-framework] parsing event: ", event.detail);
+      debug("parsing event: ", event.detail);
 
       const parsedEvent = pipe(
         parse(eventDetailSchema, event.detail),
         taskEither.fromEither,
         taskEither.map((v) => {
-          debug("[node-framework] parsed event successfully: ", v);
+          debug("parsed event successfully: ", v);
           return v;
         }),
-        taskEither.mapLeft(
-          (e) => `[node-framework] Incorrect Event Detail: ${draw(e)}`
-        )
+        taskEither.mapLeft((e) => `Incorrect Event Detail: ${draw(e)}`)
       );
 
       // we build the task making sure to have a readable error if the decoding fails
@@ -101,22 +99,19 @@ export const _lambda =
         .then((result) => {
           if (either.isLeft(result)) {
             if (string.isString(result.left)) {
-              throw result.left;
+              throw `[node-framework] ${result.left}`;
             } else {
-              logger.info("[node-framework] unknown error...: ", result.left);
+              debug("unknown error...: ", result.left);
               throw new Error("[node-framework] handler unknown error");
             }
           }
 
-          logger.info(
-            "[node-framework] handler succeded with payload: ",
-            result.right
-          );
+          debug("handler succeded with payload: ", result.right);
 
           return result.right;
         })
         .catch((e) => {
-          logger.info("[node-framework] handler failed!: ", e);
+          debug("handler failed!: ", e);
           throw e;
         });
     });
