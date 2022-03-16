@@ -1,4 +1,5 @@
 # Macai -  NodeJS Lambda Framework
+[![Publish NPM package](https://github.com/macai-project/framework-node/actions/workflows/publish.yml/badge.svg)](https://github.com/macai-project/framework-node/actions/workflows/publish.yml)
 
 Unopinionated and minimalist framework for AWS lambda in NodeJS
 
