@@ -39,6 +39,10 @@ export class DynamoInfrastructure implements DynamoIntrastructureInterface {
   ): taskEither.TaskEither<string, TransactWriteItemsOutput> => {
     debug(`executing transaction`, i);
 
+    if (i.length === 0) {
+      return taskEither.left("no rows to update!");
+    }
+
     return taskEither.tryCatch(
       () =>
         this.appDynamoRepository
