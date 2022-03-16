@@ -39,6 +39,7 @@ import { sequence } from "fp-ts/lib/Array";
 import { isString } from "fp-ts/lib/string";
 import { sequenceS } from "fp-ts/lib/Apply";
 import { Countries } from "./models/Countries";
+import { debug } from "../../logger";
 
 const parTraverse = traverse(taskEither.ApplicativePar);
 const parSequence = sequenceS(taskEither.ApplicativePar);
@@ -142,15 +143,24 @@ export class CatalogInfrastructure
     type: "id" | "relation_id";
     value: string;
   }): taskEither.TaskEither<string, TableEntryIDs[]> {
-    const getDBRows = this.query({
-      IndexName: i.type === "id" ? undefined : "relation_id-id",
+    const indexName = i.type === "id" ? undefined : "relation_id-id";
+    const expressionAttributeValues = {
+      ":k": { S: i.value },
+    };
+    const keyConditionExpression =
+      i.type === "id" ? "id = :k" : "relation_id = :k";
+
+    const queryInput = {
+      IndexName: indexName,
       TableName: this.tableName,
-      ExpressionAttributeValues: {
-        ":k": { S: i.value },
-      },
-      KeyConditionExpression: i.type === "id" ? "id = :k" : "relation_id = :k",
+      ExpressionAttributeValues: expressionAttributeValues,
+      KeyConditionExpression: keyConditionExpression,
       ProjectionExpression: "id, relation_id",
-    });
+    };
+
+    debug(`getDBRows`, queryInput);
+
+    const getDBRows = this.query(queryInput);
 
     return pipe(
       getDBRows,

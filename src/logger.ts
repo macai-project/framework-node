@@ -1,7 +1,7 @@
 import * as Sentry from "@sentry/serverless";
 
 const log = (message: any) =>
-  typeof message === "object" ? JSON.stringify(message) : message;
+  typeof message === "object" ? JSON.stringify(message, null, 2) : message;
 
 const isTest = () => process.env.NODE_ENV === "test";
 const logEnabled = () => process.env.FRAMEWORK_LOGS === "true";

@@ -37,7 +37,7 @@ export class DynamoInfrastructure implements DynamoIntrastructureInterface {
   public putDbRows = (
     i: TransactWriteItem[]
   ): taskEither.TaskEither<string, TransactWriteItemsOutput> => {
-    debug(`executing transaction ${JSON.stringify(i)}`);
+    debug(`executing transaction`, i);
 
     return taskEither.tryCatch(
       () =>
@@ -93,7 +93,7 @@ export class DynamoInfrastructure implements DynamoIntrastructureInterface {
   };
 
   public query = (q: QueryInput) => {
-    debug(`querying DB ${q}}`);
+    debug(`querying DB...`, q);
 
     const queryDB = () =>
       this.appDynamoRepository
