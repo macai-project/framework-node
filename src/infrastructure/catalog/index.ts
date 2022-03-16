@@ -240,18 +240,18 @@ export class CatalogInfrastructure
   }): TransactWriteItem => {
     const updatesAsString = pipe(
       Object.keys(customUpdate.values),
-      array.map((k) => `${k} = :${k}`)
+      array.mapWithIndex(
+        (i, valueKey) => `${valueKey} = :${String.fromCharCode(97 + i)}`
+      )
     );
     const updateExpression = `SET ${updatesAsString.join(", ")}`;
     const attributeValues = pipe(
       customUpdate.values,
-      record.reduceWithIndex(string.Ord)(
-        {} as ExpressionAttributeValueMap,
-        (k, b, a) => ({
-          ...b,
-          [`:${k}`]: AWS.DynamoDB.Converter.input(a),
-        })
-      )
+      record.toArray,
+      array.reduceWithIndex({} as ExpressionAttributeValueMap, (i, b, a) => ({
+        ...b,
+        [`:${String.fromCharCode(97 + i)}`]: AWS.DynamoDB.Converter.input(a[1]),
+      }))
     );
 
     return {
