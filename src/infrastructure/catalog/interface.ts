@@ -23,7 +23,7 @@ export interface PartialUpdate<V> {
 }
 export interface CustomUpdate {
   type: "customUpdate";
-  values: Record<string, any>;
+  values: Record<string, { value: any; condition: "only_if_empty" }>;
 }
 
 export type EntityUpdate<V> = Replacement<V> | PartialUpdate<V> | CustomUpdate;

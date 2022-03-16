@@ -243,11 +243,17 @@ export class CatalogInfrastructure
     const dataToUpdate =
       transactionType === "inward" ? "target_data" : "source_data";
     const updatesAsString = pipe(
-      Object.keys(customUpdate.values),
-      array.mapWithIndex(
-        (i, valueKey) =>
-          `${dataToUpdate}.${valueKey} = :${String.fromCharCode(97 + i)}`
-      )
+      Object.entries(customUpdate.values),
+      array.mapWithIndex((i, [valueKey, { condition }]) => {
+        const updateKey = `${dataToUpdate}.${valueKey}`;
+        if (condition === "only_if_empty") {
+          return `${updateKey} = if_not_exists(${updateKey}, :${String.fromCharCode(
+            97 + i
+          )})`;
+        }
+
+        return `${updateKey} = :${String.fromCharCode(97 + i)}`;
+      })
     );
     const updateExpression = `SET ${updatesAsString.join(", ")}`;
     const attributeValues = pipe(
@@ -255,7 +261,9 @@ export class CatalogInfrastructure
       record.toArray,
       array.reduceWithIndex({} as ExpressionAttributeValueMap, (i, b, a) => ({
         ...b,
-        [`:${String.fromCharCode(97 + i)}`]: AWS.DynamoDB.Converter.input(a[1]),
+        [`:${String.fromCharCode(97 + i)}`]: AWS.DynamoDB.Converter.input(
+          a[1].value
+        ),
       }))
     );
 
