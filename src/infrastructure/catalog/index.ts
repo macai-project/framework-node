@@ -233,15 +233,20 @@ export class CatalogInfrastructure
     id,
     relation_id,
     customUpdate,
+    transactionType,
   }: {
     id: string;
     relation_id: string;
     customUpdate: CustomUpdate;
+    transactionType: "inward" | "outward";
   }): TransactWriteItem => {
+    const dataToUpdate =
+      transactionType === "inward" ? "target_data" : "source_data";
     const updatesAsString = pipe(
       Object.keys(customUpdate.values),
       array.mapWithIndex(
-        (i, valueKey) => `${valueKey} = :${String.fromCharCode(97 + i)}`
+        (i, valueKey) =>
+          `${dataToUpdate}.${valueKey} = :${String.fromCharCode(97 + i)}`
       )
     );
     const updateExpression = `SET ${updatesAsString.join(", ")}`;
@@ -300,6 +305,7 @@ export class CatalogInfrastructure
               id,
               relation_id,
               customUpdate,
+              transactionType: "outward",
             });
           }
         );
@@ -310,6 +316,7 @@ export class CatalogInfrastructure
               id,
               relation_id,
               customUpdate,
+              transactionType: "inward",
             });
           }
         );
