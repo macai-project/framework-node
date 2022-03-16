@@ -491,7 +491,10 @@ export class CatalogInfrastructure
         );
       }
       case "customUpdate": {
-        return this.getEntityCustomUpdateOperations(entity.id, updater);
+        return this.getEntityCustomUpdateOperations(
+          this.getDynamoId(Countries.it, entity.type, entity.id),
+          updater
+        );
       }
       default:
         absurd(updateType);
