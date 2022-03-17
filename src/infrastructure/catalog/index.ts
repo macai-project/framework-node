@@ -249,7 +249,7 @@ export class CatalogInfrastructure
       Object.entries(customUpdate.values),
       array.mapWithIndex((i, [_, { condition }]) => {
         //needed to escape dash chars on uuids
-        const updateKey = `${dataToUpdate}.#${String.fromCharCode(97 + i)}`;
+        const updateKey = `#${String.fromCharCode(97 + i)}`;
 
         if (condition === "only_if_empty") {
           return `${updateKey} = if_not_exists(${updateKey}, :${String.fromCharCode(
@@ -276,7 +276,7 @@ export class CatalogInfrastructure
       record.toArray,
       array.reduceWithIndex({} as ExpressionAttributeNameMap, (i, b, a) => ({
         ...b,
-        [`#${String.fromCharCode(97 + i)}`]: a[0],
+        [`#${String.fromCharCode(97 + i)}`]: `${dataToUpdate}.${a[0]}`,
       }))
     );
 
