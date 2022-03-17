@@ -109,7 +109,7 @@ export class DynamoInfrastructure implements DynamoIntrastructureInterface {
             : undefined;
         })
         .then((r) => {
-          debug(`successfully query`, r);
+          debug(`successful query`, r);
 
           return r;
         });

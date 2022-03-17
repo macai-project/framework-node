@@ -28,6 +28,7 @@ import {
 import AWS from "aws-sdk";
 import { absurd, pipe } from "fp-ts/function";
 import {
+  ExpressionAttributeNameMap,
   ExpressionAttributeValueMap,
   TransactWriteItem,
   TransactWriteItemsOutput,
@@ -240,12 +241,16 @@ export class CatalogInfrastructure
     customUpdate: CustomUpdate;
     transactionType: "inward" | "outward";
   }): TransactWriteItem => {
+    debug("applying custom update", customUpdate.values);
+
     const dataToUpdate =
       transactionType === "inward" ? "target_data" : "source_data";
     const updatesAsString = pipe(
       Object.entries(customUpdate.values),
-      array.mapWithIndex((i, [valueKey, { condition }]) => {
-        const updateKey = `${dataToUpdate}.${valueKey}`;
+      array.mapWithIndex((i, [_, { condition }]) => {
+        //needed to escape dash chars on uuids
+        const updateKey = `${dataToUpdate}.#${String.fromCharCode(97 + i)}`;
+
         if (condition === "only_if_empty") {
           return `${updateKey} = if_not_exists(${updateKey}, :${String.fromCharCode(
             97 + i
@@ -266,6 +271,14 @@ export class CatalogInfrastructure
         ),
       }))
     );
+    const attributeNames = pipe(
+      customUpdate.values,
+      record.toArray,
+      array.reduceWithIndex({} as ExpressionAttributeNameMap, (i, b, a) => ({
+        ...b,
+        [`#${String.fromCharCode(97 + i)}`]: a[0],
+      }))
+    );
 
     return {
       Update: {
@@ -280,6 +293,7 @@ export class CatalogInfrastructure
         },
         UpdateExpression: updateExpression,
         ExpressionAttributeValues: attributeValues,
+        ExpressionAttributeNames: attributeNames,
       },
     };
   };
