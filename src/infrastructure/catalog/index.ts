@@ -1,12 +1,4 @@
-import {
-  array,
-  either,
-  number,
-  option,
-  record,
-  string,
-  taskEither,
-} from "fp-ts";
+import { either, option, record, string, taskEither } from "fp-ts";
 import * as D from "io-ts/Decoder";
 import { decodeOrDraw } from "../../codecs/utils";
 import {
@@ -28,15 +20,12 @@ import {
 import AWS from "aws-sdk";
 import { absurd, pipe } from "fp-ts/function";
 import {
-  ExpressionAttributeNameMap,
-  ExpressionAttributeValueMap,
   TransactWriteItem,
   TransactWriteItemsOutput,
 } from "aws-sdk/clients/dynamodb";
 import { filterMap } from "fp-ts/Array";
 import { traverse } from "fp-ts/lib/Record";
 import { DynamoInfrastructure } from "../dynamo";
-import { sequence } from "fp-ts/lib/Array";
 import { isString } from "fp-ts/lib/string";
 import { sequenceS } from "fp-ts/lib/Apply";
 import { Countries } from "./models/Countries";
@@ -44,6 +33,7 @@ import { debug } from "../../logger";
 
 const parTraverse = traverse(taskEither.ApplicativePar);
 const parSequence = sequenceS(taskEither.ApplicativePar);
+const reduceRecord = record.reduceWithIndex(string.Ord);
 
 export const TableEntryIDs = D.struct({
   id: D.string,
@@ -230,28 +220,6 @@ export class CatalogInfrastructure
     );
   };
 
-  private getKeyHashed = (s: string, i: number) => {
-    const keyHashes = s
-      .split(".")
-      .map(
-        (_, ii) =>
-          `#${String.fromCharCode(97 + i)}${String.fromCharCode(97 + ii)}`
-      );
-    //needed to escape dash chars on uuids
-    return keyHashes.join(".");
-  };
-
-  private getKeyHashedValues = (key: string, value: any, index: number) => {
-    return key.split(".").reduce(
-      (acc, keypart, ii) => ({
-        ...acc,
-        [`#${String.fromCharCode(97 + index)}${String.fromCharCode(97 + ii)}`]:
-          keypart,
-      }),
-      {}
-    );
-  };
-
   private getTransactionFromCustomUpdate = ({
     id,
     relation_id,
@@ -263,64 +231,20 @@ export class CatalogInfrastructure
     customUpdate: CustomUpdate;
     transactionType: "inward" | "outward";
   }): TransactWriteItem => {
-    debug("applying custom update", customUpdate.values);
-
     const dataToUpdate =
       transactionType === "inward" ? "target_data" : "source_data";
-    const updatesAsString = pipe(
-      Object.entries(customUpdate.values),
-      array.mapWithIndex((i, [keyValue, { condition }]) => {
-        //needed to escape dash chars on uuids
-        const updateKey = `#initialKey.${this.getKeyHashed(keyValue, i)}`;
 
-        if (condition === "only_if_empty") {
-          return `${updateKey} = if_not_exists(${updateKey}, :${String.fromCharCode(
-            97 + i
-          )})`;
-        }
-
-        return `${updateKey} = :${String.fromCharCode(97 + i)}`;
-      })
-    );
-    const updateExpression = `SET ${updatesAsString.join(", ")}`;
-    const attributeValues = pipe(
-      customUpdate.values,
-      record.toArray,
-      array.reduceWithIndex({} as ExpressionAttributeValueMap, (i, b, a) => ({
-        ...b,
-        [`:${String.fromCharCode(97 + i)}`]: AWS.DynamoDB.Converter.input(
-          a[1].value
-        ),
-      }))
-    );
-    const attributeNames = pipe(
-      customUpdate.values,
-      record.toArray,
-      array.reduceWithIndex(
-        { "#initialKey": dataToUpdate } as ExpressionAttributeNameMap,
-        (i, b, a) => ({
-          ...b,
-          ...this.getKeyHashedValues(a[0], a[1].value, i),
-        })
-      )
-    );
-
-    return {
-      Update: {
-        TableName: this.tableName,
-        Key: {
-          id: {
-            S: id,
-          },
-          relation_id: {
-            S: relation_id,
-          },
-        },
-        UpdateExpression: updateExpression,
-        ExpressionAttributeValues: attributeValues,
-        ExpressionAttributeNames: attributeNames,
-      },
-    };
+    return this.getNestedUpdateTransaction({
+      id,
+      relation_id,
+      customUpdate: pipe(
+        customUpdate.values,
+        reduceRecord({}, (k, acc, v) => ({
+          ...acc,
+          [`${dataToUpdate}.${k}`]: v,
+        }))
+      ),
+    });
   };
 
   /**

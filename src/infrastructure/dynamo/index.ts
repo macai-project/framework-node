@@ -1,15 +1,19 @@
-import { taskEither } from "fp-ts";
+import { array, record, taskEither } from "fp-ts";
 import * as D from "io-ts/Decoder";
 import { logger } from "../..";
 import { decodeOrThrow } from "../../codecs/utils";
 import AWS from "aws-sdk";
 import {
+  ExpressionAttributeNameMap,
+  ExpressionAttributeValueMap,
   QueryInput,
   TransactWriteItem,
   TransactWriteItemsOutput,
 } from "aws-sdk/clients/dynamodb";
 import { Key } from "aws-sdk/clients/dynamodb";
 import { debug } from "../../logger";
+import { CustomUpdate } from "../catalog/interface";
+import { pipe } from "fp-ts/lib/function";
 
 interface DynamoIntrastructureInterface {
   putDbRows(
@@ -17,6 +21,11 @@ interface DynamoIntrastructureInterface {
   ): taskEither.TaskEither<string, TransactWriteItemsOutput>;
   getDbRow(k: Key): taskEither.TaskEither<string, unknown>;
   query(k: QueryInput): taskEither.TaskEither<unknown, unknown>;
+  getNestedUpdateTransaction(k: {
+    id: string;
+    relation_id: string;
+    customUpdate: CustomUpdate["values"];
+  }): TransactWriteItem;
 }
 
 export class DynamoInfrastructure implements DynamoIntrastructureInterface {
@@ -118,5 +127,91 @@ export class DynamoInfrastructure implements DynamoIntrastructureInterface {
       debug(`failed querying the DB! ${e?.message}`, e);
       return e;
     });
+  };
+
+  private getHashedUpdateKey = (s: string, i: number) => {
+    const keyHashes = s
+      .split(".")
+      .map(
+        (_, ii) =>
+          `#${String.fromCharCode(97 + i)}${String.fromCharCode(97 + ii)}`
+      );
+
+    return keyHashes.join(".");
+  };
+
+  private getHashedAttributeNames = (key: string, index: number) => {
+    return key.split(".").reduce(
+      (acc, keypart, ii) => ({
+        ...acc,
+        [`#${String.fromCharCode(97 + index)}${String.fromCharCode(97 + ii)}`]:
+          keypart,
+      }),
+      {}
+    );
+  };
+
+  public getNestedUpdateTransaction = ({
+    id,
+    relation_id,
+    customUpdate,
+  }: {
+    id: string;
+    relation_id: string;
+    customUpdate: CustomUpdate["values"];
+  }): TransactWriteItem => {
+    debug("applying nested update", customUpdate);
+
+    const updatesAsString = pipe(
+      Object.entries(customUpdate),
+      array.mapWithIndex((i, [keyValue, { condition }]) => {
+        //needed to escape dash chars on uuids
+        const updateKey = this.getHashedUpdateKey(keyValue, i);
+
+        if (condition === "only_if_empty") {
+          return `${updateKey} = if_not_exists(${updateKey}, :${String.fromCharCode(
+            97 + i
+          )})`;
+        }
+
+        return `${updateKey} = :${String.fromCharCode(97 + i)}`;
+      })
+    );
+    const updateExpression = `SET ${updatesAsString.join(", ")}`;
+    const attributeValues = pipe(
+      customUpdate,
+      record.toArray,
+      array.reduceWithIndex({} as ExpressionAttributeValueMap, (i, b, a) => ({
+        ...b,
+        [`:${String.fromCharCode(97 + i)}`]: AWS.DynamoDB.Converter.input(
+          a[1].value
+        ),
+      }))
+    );
+    const attributeNames = pipe(
+      customUpdate,
+      record.toArray,
+      array.reduceWithIndex({} as ExpressionAttributeNameMap, (i, b, a) => ({
+        ...b,
+        ...this.getHashedAttributeNames(a[0], i),
+      }))
+    );
+
+    return {
+      Update: {
+        TableName: this.tableName,
+        Key: {
+          id: {
+            S: id,
+          },
+          relation_id: {
+            S: relation_id,
+          },
+        },
+        UpdateExpression: updateExpression,
+        ExpressionAttributeValues: attributeValues,
+        ExpressionAttributeNames: attributeNames,
+      },
+    };
   };
 }
