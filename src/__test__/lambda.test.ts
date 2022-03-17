@@ -12,7 +12,7 @@ const getEventBridgeEvent = <D>(detail: D): EventBridgeEvent<string, D> => ({
   id: "mock",
   version: "mock",
   account: "mock",
-  time: "mock",
+  time: "2022-03-17T18:51:33.908Z",
   region: "mock",
   resources: [],
   source: "mock",
