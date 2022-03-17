@@ -244,6 +244,7 @@ export class CatalogInfrastructure
   private getKeyHashedValues = (key: string, value: any, index: number) => {
     return key.split(".").reduce(
       (acc, keypart, ii) => ({
+        ...acc,
         [`#${String.fromCharCode(97 + index)}${String.fromCharCode(97 + ii)}`]:
           keypart,
       }),
