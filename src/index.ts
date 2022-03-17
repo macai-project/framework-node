@@ -19,7 +19,8 @@ import { WrapHandler } from "./handler";
 import { traverseWithIndex } from "fp-ts/lib/Record";
 import { debug } from "./logger";
 import { EventBridgeClient } from "@aws-sdk/client-eventbridge";
-import { logger } from ".";
+import { DateFromISOString } from "./codecs/DateFromISOString";
+import { decodeOrThrow } from "./codecs/utils";
 
 type SchemaRecord<K extends string> = Record<K, C.Codec<unknown, any, any>>;
 type Config<O, A, K extends string> = {
@@ -63,14 +64,31 @@ export const _lambda =
   (
     handler: ({
       event,
+      eventMeta,
       env,
     }: {
       event: A;
+      eventMeta: {
+        id: string;
+        version: string;
+        account: string;
+        time: Date;
+        region: string;
+        resources: string[];
+        source: string;
+        "detail-type": string;
+      };
       env: Record<K, string> | undefined;
     }) => taskEither.TaskEither<unknown, R>
   ) => {
     return wrapperFunc((event: EventBridgeEvent<string, O>) => {
       debug("parsing event: ", event.detail);
+
+      const eventMeta = {
+        ...event,
+        time: decodeOrThrow(DateFromISOString, event.time),
+        detail: undefined,
+      };
 
       const parsedEvent = pipe(
         parse(eventDetailSchema, event.detail),
@@ -86,6 +104,7 @@ export const _lambda =
       const handlerTask = pipe(
         taskEither.Do,
         taskEither.bind("event", () => parsedEvent),
+        taskEither.bind("eventMeta", () => taskEither.of(eventMeta)),
         taskEither.bind("env", () =>
           envSchema
             ? getEnvValues(envSchema, envRuntime)
