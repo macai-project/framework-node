@@ -24,7 +24,7 @@ interface DynamoIntrastructureInterface {
   getNestedUpdateTransaction(k: {
     id: string;
     relation_id: string;
-    customUpdate: CustomUpdate["values"];
+    customUpdate: CustomUpdate;
   }): TransactWriteItem;
 }
 
@@ -158,12 +158,12 @@ export class DynamoInfrastructure implements DynamoIntrastructureInterface {
   }: {
     id: string;
     relation_id: string;
-    customUpdate: CustomUpdate["values"];
+    customUpdate: CustomUpdate;
   }): TransactWriteItem => {
-    debug("applying nested update", customUpdate);
+    debug("applying nested update", customUpdate.values);
 
     const updatesAsString = pipe(
-      Object.entries(customUpdate),
+      Object.entries(customUpdate.values),
       array.mapWithIndex((i, [keyValue, { condition }]) => {
         //needed to escape dash chars on uuids
         const updateKey = this.getHashedUpdateKey(keyValue, i);
@@ -179,7 +179,7 @@ export class DynamoInfrastructure implements DynamoIntrastructureInterface {
     );
     const updateExpression = `SET ${updatesAsString.join(", ")}`;
     const attributeValues = pipe(
-      customUpdate,
+      customUpdate.values,
       record.toArray,
       array.reduceWithIndex({} as ExpressionAttributeValueMap, (i, b, a) => ({
         ...b,
@@ -189,7 +189,7 @@ export class DynamoInfrastructure implements DynamoIntrastructureInterface {
       }))
     );
     const attributeNames = pipe(
-      customUpdate,
+      customUpdate.values,
       record.toArray,
       array.reduceWithIndex({} as ExpressionAttributeNameMap, (i, b, a) => ({
         ...b,
@@ -211,6 +211,7 @@ export class DynamoInfrastructure implements DynamoIntrastructureInterface {
         UpdateExpression: updateExpression,
         ExpressionAttributeValues: attributeValues,
         ExpressionAttributeNames: attributeNames,
+        ConditionExpression: customUpdate.generalCondition,
       },
     };
   };

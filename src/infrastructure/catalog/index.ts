@@ -237,13 +237,16 @@ export class CatalogInfrastructure
     return this.getNestedUpdateTransaction({
       id,
       relation_id,
-      customUpdate: pipe(
-        customUpdate.values,
-        reduceRecord({}, (k, acc, v) => ({
-          ...acc,
-          [`${dataToUpdate}.${k}`]: v,
-        }))
-      ),
+      customUpdate: {
+        ...customUpdate,
+        values: pipe(
+          customUpdate.values,
+          reduceRecord({}, (k, acc, v) => ({
+            ...acc,
+            [`${dataToUpdate}.${k}`]: v,
+          }))
+        ),
+      },
     });
   };
 

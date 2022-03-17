@@ -23,6 +23,7 @@ export interface PartialUpdate<V> {
 }
 export interface CustomUpdate {
   type: "customUpdate";
+  generalCondition?: string;
   values: Record<string, { value: any; condition?: "only_if_empty" }>;
 }
 
