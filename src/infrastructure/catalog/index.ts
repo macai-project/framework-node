@@ -230,6 +230,27 @@ export class CatalogInfrastructure
     );
   };
 
+  private getKeyHashed = (s: string, i: number) => {
+    const keyHashes = s
+      .split(".")
+      .map(
+        (_, ii) =>
+          `#${String.fromCharCode(97 + i)}${String.fromCharCode(97 + ii)}`
+      );
+    //needed to escape dash chars on uuids
+    return keyHashes.join(".");
+  };
+
+  private getKeyHashedValues = (key: string, value: any, index: number) => {
+    return key.split(".").reduce(
+      (acc, keypart, ii) => ({
+        [`#${String.fromCharCode(97 + index)}${String.fromCharCode(97 + ii)}`]:
+          keypart,
+      }),
+      {}
+    );
+  };
+
   private getTransactionFromCustomUpdate = ({
     id,
     relation_id,
@@ -247,9 +268,9 @@ export class CatalogInfrastructure
       transactionType === "inward" ? "target_data" : "source_data";
     const updatesAsString = pipe(
       Object.entries(customUpdate.values),
-      array.mapWithIndex((i, [_, { condition }]) => {
+      array.mapWithIndex((i, [keyValue, { condition }]) => {
         //needed to escape dash chars on uuids
-        const updateKey = `#${String.fromCharCode(97 + i)}`;
+        const updateKey = `#initialKey.${this.getKeyHashed(keyValue, i)}`;
 
         if (condition === "only_if_empty") {
           return `${updateKey} = if_not_exists(${updateKey}, :${String.fromCharCode(
@@ -274,10 +295,13 @@ export class CatalogInfrastructure
     const attributeNames = pipe(
       customUpdate.values,
       record.toArray,
-      array.reduceWithIndex({} as ExpressionAttributeNameMap, (i, b, a) => ({
-        ...b,
-        [`#${String.fromCharCode(97 + i)}`]: `${dataToUpdate}.${a[0]}`,
-      }))
+      array.reduceWithIndex(
+        { "#initialKey": dataToUpdate } as ExpressionAttributeNameMap,
+        (i, b, a) => ({
+          ...b,
+          ...this.getKeyHashedValues(a[0], a[1].value, i),
+        })
+      )
     );
 
     return {
