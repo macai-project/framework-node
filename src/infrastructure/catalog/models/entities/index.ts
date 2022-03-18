@@ -56,7 +56,7 @@ export const TagEntity = D.struct({
 });
 export type TagEntity = D.TypeOf<typeof TagEntity>;
 
-const Entity = D.union(
+export const Entity = D.union(
   CategoryEntity,
   SubcategoryEntity,
   MicrocategoryEntity,
