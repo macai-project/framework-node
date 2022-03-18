@@ -243,7 +243,7 @@ export class CatalogInfrastructure
           customUpdate.values,
           reduceRecord({}, (k, acc, v) => ({
             ...acc,
-            [`${dataToUpdate}.${k}`]: v,
+            [`${v.noDrill ? "" : `${dataToUpdate}.`}${k}`]: v,
           }))
         ),
       },

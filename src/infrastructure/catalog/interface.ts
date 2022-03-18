@@ -32,7 +32,10 @@ export interface CustomUpdate {
       values?: { [key: ColumnedKey]: AttributeValue };
     };
   };
-  values: Record<string, { value: any; condition?: "only_if_empty" }>;
+  values: Record<
+    string,
+    { value: any; condition?: "only_if_empty"; noDrill?: boolean }
+  >;
 }
 
 export type EntityUpdate<V> = Replacement<V> | PartialUpdate<V> | CustomUpdate;
