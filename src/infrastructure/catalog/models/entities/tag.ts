@@ -50,6 +50,11 @@ export const BannerTagProps = {
   ...BannerTagOptional,
 };
 
+export const TagProps = {
+  ...BannerTagProps,
+  ...InEvidenceTagProps,
+};
+
 export const Tag = D.union(
   D.struct(InEvidenceTagProps),
   D.struct(BannerTagProps)
