@@ -55,6 +55,17 @@ const getEnvValues = <K extends string>(
   );
 };
 
+export type EventMeta = {
+  id: string;
+  version: string;
+  account: string;
+  time: Date;
+  region: string;
+  resources: string[];
+  source: string;
+  "detail-type": string;
+};
+
 export const _lambda =
   <O, A, R, K extends string = never>(
     wrapperFunc: WrapHandler<EventBridgeEvent<string, O>, R | void>,
@@ -68,16 +79,7 @@ export const _lambda =
       env,
     }: {
       event: A;
-      eventMeta: {
-        id: string;
-        version: string;
-        account: string;
-        time: Date;
-        region: string;
-        resources: string[];
-        source: string;
-        "detail-type": string;
-      };
+      eventMeta: EventMeta;
       env: Record<K, string> | undefined;
     }) => taskEither.TaskEither<unknown, R>
   ) => {
@@ -143,6 +145,7 @@ export const getLambda = <O, A, R, K extends string = never>(
     f: (i: {
       event: A;
       env: Record<K, string> | undefined;
+      eventMeta: EventMeta;
     }) => taskEither.TaskEither<unknown, R>
   ) => WrapHandler<EventBridgeEvent<string, O>, R | void>;
 };
