@@ -28,8 +28,8 @@ export interface CustomUpdate {
   generalCondition?: {
     expression: string;
     placeholders?: {
-      namePlaceholders?: { [key: HashedKey]: AttributeName };
-      valuePlaceholders?: { [key: ColumnedKey]: AttributeValue };
+      names?: { [key: HashedKey]: AttributeName };
+      values?: { [key: ColumnedKey]: AttributeValue };
     };
   };
   values: Record<string, { value: any; condition?: "only_if_empty" }>;

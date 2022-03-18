@@ -211,11 +211,11 @@ export class DynamoInfrastructure implements DynamoIntrastructureInterface {
         UpdateExpression: updateExpression,
         ExpressionAttributeValues: {
           ...attributeValues,
-          ...customUpdate.generalCondition?.placeholders?.valuePlaceholders,
+          ...customUpdate.generalCondition?.placeholders?.values,
         },
         ExpressionAttributeNames: {
           ...attributeNames,
-          ...customUpdate.generalCondition?.placeholders?.valuePlaceholders,
+          ...customUpdate.generalCondition?.placeholders?.names,
         },
         ConditionExpression: customUpdate.generalCondition?.expression,
       },
