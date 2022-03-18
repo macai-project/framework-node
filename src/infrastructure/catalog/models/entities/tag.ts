@@ -16,5 +16,38 @@ export const InEvidenceTagProps = {
   ...InEvidenceTagOptional,
 };
 
-export const Tag = D.union(D.struct(InEvidenceTagProps));
+const BannerTagCommon = D.partial({
+  order: D.number,
+  title: D.string,
+  description: D.string,
+  image: D.boolean,
+  backgroundColor: D.string,
+});
+
+export const BannerTagMandatory = {
+  id: D.string,
+  name: D.string,
+  type: D.literal("banner"),
+  state: D.union(EntityState, D.literal("archived")),
+  body: D.union(
+    D.intersect(D.struct({ subType: D.literal("product-collection") }))(
+      BannerTagCommon
+    ),
+    D.intersect(D.struct({ subType: D.literal("subcategory") }))(
+      BannerTagCommon
+    )
+  ),
+};
+
+export const BannerTagOptional = {};
+
+export const BannerTagProps = {
+  ...BannerTagMandatory,
+  ...BannerTagOptional,
+};
+
+export const Tag = D.union(
+  D.struct(InEvidenceTagProps),
+  D.struct(BannerTagProps)
+);
 export type Tag = D.TypeOf<typeof Tag>;
