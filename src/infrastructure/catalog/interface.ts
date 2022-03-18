@@ -17,6 +17,12 @@ export interface Replacement<V> {
   type: "replacement";
   newValue: V;
 }
+
+/**
+ * Accepts an updater function that is called with the current body of the item
+ *
+ * @deprecated Use a {@link CustomUpdate} instead.
+ */
 export interface PartialUpdate<V> {
   type: "partialUpdate";
   update: (oldValue: V) => V;
