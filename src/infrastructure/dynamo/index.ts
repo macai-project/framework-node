@@ -209,9 +209,15 @@ export class DynamoInfrastructure implements DynamoIntrastructureInterface {
           },
         },
         UpdateExpression: updateExpression,
-        ExpressionAttributeValues: attributeValues,
-        ExpressionAttributeNames: attributeNames,
-        ConditionExpression: customUpdate.generalCondition,
+        ExpressionAttributeValues: {
+          ...attributeValues,
+          ...customUpdate.generalCondition?.placeholders?.valuePlaceholders,
+        },
+        ExpressionAttributeNames: {
+          ...attributeNames,
+          ...customUpdate.generalCondition?.placeholders?.valuePlaceholders,
+        },
+        ConditionExpression: customUpdate.generalCondition?.expression,
       },
     };
   };

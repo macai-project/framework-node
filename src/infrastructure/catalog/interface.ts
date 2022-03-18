@@ -1,15 +1,8 @@
-import { either, taskEither } from "fp-ts";
+import { taskEither } from "fp-ts";
+import { EntityType, Entity } from "./models/entities";
 import {
-  Item,
-  Category,
-  Subcategory,
-  Tag,
-  Microcategory,
-  EntityType,
-  Entity,
-} from "./models/entities";
-import {
-  TransactWriteItem,
+  AttributeName,
+  AttributeValue,
   TransactWriteItemsOutput,
 } from "aws-sdk/clients/dynamodb";
 
@@ -27,9 +20,18 @@ export interface PartialUpdate<V> {
   type: "partialUpdate";
   update: (oldValue: V) => V;
 }
+
+type HashedKey = `#${string}`;
+type ColumnedKey = `:${string}`;
 export interface CustomUpdate {
   type: "customUpdate";
-  generalCondition?: string;
+  generalCondition?: {
+    expression: string;
+    placeholders?: {
+      namePlaceholders?: { [key: HashedKey]: AttributeName };
+      valuePlaceholders?: { [key: ColumnedKey]: AttributeValue };
+    };
+  };
   values: Record<string, { value: any; condition?: "only_if_empty" }>;
 }
 
