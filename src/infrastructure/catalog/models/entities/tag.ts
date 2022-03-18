@@ -1,4 +1,5 @@
 import * as D from "io-ts/Decoder";
+import { DateFromISOString } from "../../../../codecs/DateFromISOString";
 import { EntityState } from "./common";
 
 export const InEvidenceTagMandatory = {
@@ -22,6 +23,9 @@ const BannerTagCommon = D.partial({
   description: D.string,
   image: D.boolean,
   backgroundColor: D.string,
+  startDate: DateFromISOString,
+  endDate: DateFromISOString,
+  warehouseID: D.string,
 });
 
 export const BannerTagMandatory = {
