@@ -340,7 +340,11 @@ export class CatalogInfrastructure
                 },
                 UpdateExpression: "set source_data = :x",
                 ExpressionAttributeValues: {
-                  ":x": { M: AWS.DynamoDB.Converter.marshall(updatedBody) },
+                  ":x": {
+                    M: AWS.DynamoDB.Converter.marshall(
+                      Entity.encode({ type, body: updatedBody } as Entity)
+                    ),
+                  },
                 },
               },
             };
@@ -451,7 +455,7 @@ export class CatalogInfrastructure
     const transaction = this.getDbPutTransaction({
       id: this.getDynamoId(Countries.it, e.type, id),
       relation_id: this.getDynamoEntityTag(Countries.it, e.type),
-      source_data: e.body,
+      source_data: Entity.encode(e).body,
     });
 
     return pipe(
