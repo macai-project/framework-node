@@ -22,7 +22,8 @@ const BannerTagCommon = D.partial({
   title: D.string,
   description: D.string,
   image: D.boolean,
-  backgroundColor: D.string,
+  background: D.array(D.string),
+  template: D.literal("1/2", "2/3"),
   startDate: DateFromISOString,
   endDate: DateFromISOString,
   warehouseID: D.string,
@@ -37,8 +38,14 @@ export const BannerTagMandatory = {
     D.intersect(D.struct({ subType: D.literal("product-collection") }))(
       BannerTagCommon
     ),
+    D.intersect(D.struct({ subType: D.literal("microcategory-collection") }))(
+      BannerTagCommon
+    ),
     D.intersect(D.struct({ subType: D.literal("subcategory") }))(
       BannerTagCommon
+    ),
+    D.intersect(D.struct({ subType: D.literal("link") }))(
+      D.intersect(D.struct({ path: D.string }))(BannerTagCommon)
     )
   ),
 };
