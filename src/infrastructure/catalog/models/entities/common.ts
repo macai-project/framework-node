@@ -1,4 +1,4 @@
-import * as D from "io-ts/Decoder";
+import * as C from "io-ts/Codec";
 
-export const EntityState = D.literal("published", "draft");
-export type EntityState = D.TypeOf<typeof EntityState>;
+export const EntityState = C.literal("published", "draft");
+export type EntityState = C.TypeOf<typeof EntityState>;

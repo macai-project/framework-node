@@ -1,4 +1,4 @@
-import * as D from "io-ts/Decoder";
+import * as C from "io-ts/Codec";
 import { Category } from "./category";
 import { Subcategory } from "./subcategory";
 import { Microcategory } from "./microcategory";
@@ -11,56 +11,56 @@ export * from "./microcategory";
 export * from "./item";
 export * from "./tag";
 
-export const CategoryType = D.literal("category");
-export const SubcategoryType = D.literal("subcategory");
-export const MicrocategoryType = D.literal("microcategory");
-export const ItemType = D.literal("item");
-export const TagType = D.literal("tag");
+export const CategoryType = C.literal("category");
+export const SubcategoryType = C.literal("subcategory");
+export const MicrocategoryType = C.literal("microcategory");
+export const ItemType = C.literal("item");
+export const TagType = C.literal("tag");
 
-const EntityType = D.union(
-  CategoryType,
-  SubcategoryType,
-  MicrocategoryType,
-  ItemType,
-  TagType
+const EntityType = C.literal(
+  "category",
+  "subcategory",
+  "microcategory",
+  "item",
+  "tag"
 );
-export type EntityType = D.TypeOf<typeof EntityType>;
+export type EntityType = C.TypeOf<typeof EntityType>;
 
-export const CategoryEntity = D.struct({
+export const CategoryEntity = C.struct({
   type: CategoryType,
   body: Category,
 });
-export type CategoryEntity = D.TypeOf<typeof CategoryEntity>;
+export type CategoryEntity = C.TypeOf<typeof CategoryEntity>;
 
-export const SubcategoryEntity = D.struct({
+export const SubcategoryEntity = C.struct({
   type: SubcategoryType,
   body: Subcategory,
 });
-export type SubcategoryEntity = D.TypeOf<typeof SubcategoryEntity>;
+export type SubcategoryEntity = C.TypeOf<typeof SubcategoryEntity>;
 
-export const MicrocategoryEntity = D.struct({
+export const MicrocategoryEntity = C.struct({
   type: MicrocategoryType,
   body: Microcategory,
 });
-export type MicrocategoryEntity = D.TypeOf<typeof MicrocategoryEntity>;
+export type MicrocategoryEntity = C.TypeOf<typeof MicrocategoryEntity>;
 
-export const ItemEntity = D.struct({
+export const ItemEntity = C.struct({
   type: ItemType,
   body: Item,
 });
-export type ItemEntity = D.TypeOf<typeof ItemEntity>;
+export type ItemEntity = C.TypeOf<typeof ItemEntity>;
 
-export const TagEntity = D.struct({
+export const TagEntity = C.struct({
   type: TagType,
   body: Tag,
 });
-export type TagEntity = D.TypeOf<typeof TagEntity>;
+export type TagEntity = C.TypeOf<typeof TagEntity>;
 
-export const Entity = D.union(
-  CategoryEntity,
-  SubcategoryEntity,
-  MicrocategoryEntity,
-  ItemEntity,
-  TagEntity
-);
-export type Entity = D.TypeOf<typeof Entity>;
+export const Entity = C.sum("type")({
+  category: CategoryEntity,
+  subcategory: SubcategoryEntity,
+  microcategory: MicrocategoryEntity,
+  item: ItemEntity,
+  tag: TagEntity,
+});
+export type Entity = C.TypeOf<typeof Entity>;

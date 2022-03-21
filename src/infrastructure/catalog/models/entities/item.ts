@@ -1,46 +1,46 @@
-import * as D from "io-ts/Decoder";
+import * as C from "io-ts/Codec";
 
-export const Warehouse = D.intersect(
-  D.struct({
-    quantity: D.number,
+export const Warehouse = C.intersect(
+  C.struct({
+    quantity: C.number,
   })
 )(
-  D.partial({
-    price: D.struct({ currency: D.string, value: D.number }),
-    active: D.boolean,
+  C.partial({
+    price: C.struct({ currency: C.string, value: C.number }),
+    active: C.boolean,
   })
 );
-export type Warehouse = D.TypeOf<typeof Warehouse>;
+export type Warehouse = C.TypeOf<typeof Warehouse>;
 
 const ItemOptional = {
-  description: D.string,
-  additional_information: D.string,
-  storage: D.string,
-  origin: D.string,
-  nutritional_value: D.string,
-  item_size: D.struct({
-    type: D.literal("gr", "ml", "unit"),
-    value: D.number,
+  description: C.string,
+  additional_information: C.string,
+  storage: C.string,
+  origin: C.string,
+  nutritional_value: C.string,
+  item_size: C.struct({
+    type: C.literal("gr", "ml", "unit"),
+    value: C.number,
   }),
-  manufacturer: D.string,
-  brand: D.string,
-  payable_with_tickets: D.boolean,
-  allergens: D.string,
-  ingredients: D.string,
-  search_keywords: D.array(D.string),
-  max_allowed: D.number,
+  manufacturer: C.string,
+  brand: C.string,
+  payable_with_tickets: C.boolean,
+  allergens: C.string,
+  ingredients: C.string,
+  search_keywords: C.array(C.string),
+  max_allowed: C.number,
 };
 
 const ItemPublishedMandatory = {
-  warehouses: D.record(Warehouse),
-  price: D.struct({ value: D.number, currency: D.string }),
-  vat: D.number,
-  eans: D.array(D.string),
+  warehouses: C.record(Warehouse),
+  price: C.struct({ value: C.number, currency: C.string }),
+  vat: C.number,
+  eans: C.array(C.string),
 };
 
 const ItemMandatory = {
-  midec: D.string,
-  name: D.string,
+  midec: C.string,
+  name: C.string,
 };
 
 export const ItemProps = {
@@ -49,21 +49,32 @@ export const ItemProps = {
   ...ItemMandatory,
 };
 
-const DraftedItemMandatory = D.intersect(
-  D.struct({
-    state: D.literal("draft"),
+const DraftedItemMandatory = C.intersect(
+  C.struct({
+    state: C.literal("draft"),
   })
-)(D.struct(ItemMandatory));
+)(C.struct(ItemMandatory));
 
-const DraftedItem = D.intersect(
-  D.intersect(DraftedItemMandatory)(D.partial(ItemPublishedMandatory))
-)(D.partial(ItemOptional));
-type DraftedItem = D.TypeOf<typeof DraftedItem>;
+const PublishedItemMandatory = C.intersect(
+  C.intersect(
+    C.struct({
+      state: C.literal("published"),
+    })
+  )(C.struct(ItemMandatory))
+)(C.struct(ItemPublishedMandatory));
 
-const PublishedItem = D.intersect(
-  D.intersect(DraftedItemMandatory)(D.struct(ItemPublishedMandatory))
-)(D.partial(ItemOptional));
-type PublishedItem = D.TypeOf<typeof PublishedItem>;
+const DraftedItem = C.intersect(
+  C.intersect(DraftedItemMandatory)(C.partial(ItemPublishedMandatory))
+)(C.partial(ItemOptional));
+type DraftedItem = C.TypeOf<typeof DraftedItem>;
 
-export const Item = D.union(DraftedItem, PublishedItem);
-export type Item = D.TypeOf<typeof Item>;
+const PublishedItem = C.intersect(PublishedItemMandatory)(
+  C.partial(ItemOptional)
+);
+type PublishedItem = C.TypeOf<typeof PublishedItem>;
+
+export const Item = C.sum("state")({
+  draft: DraftedItem,
+  published: PublishedItem,
+});
+export type Item = C.TypeOf<typeof Item>;

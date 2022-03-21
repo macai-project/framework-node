@@ -1,14 +1,14 @@
-import * as D from "io-ts/Decoder";
+import * as C from "io-ts/Codec";
 import { EntityState } from "./common";
 
 export const MicrocategoryMandatory = {
-  id: D.string,
-  name: D.string,
+  id: C.string,
+  name: C.string,
   state: EntityState,
 };
 
 export const MicrocategoryOptional = {
-  order: D.number,
+  order: C.number,
 };
 
 export const MicrocategoryProps = {
@@ -16,7 +16,7 @@ export const MicrocategoryProps = {
   ...MicrocategoryOptional,
 };
 
-export const Microcategory = D.intersect(D.struct(MicrocategoryMandatory))(
-  D.partial(MicrocategoryOptional)
+export const Microcategory = C.intersect(C.struct(MicrocategoryMandatory))(
+  C.partial(MicrocategoryOptional)
 );
-export type Microcategory = D.TypeOf<typeof Microcategory>;
+export type Microcategory = C.TypeOf<typeof Microcategory>;

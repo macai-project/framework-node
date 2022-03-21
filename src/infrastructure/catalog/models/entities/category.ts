@@ -1,4 +1,4 @@
-import * as D from "io-ts/Decoder";
+import * as D from "io-ts/Codec";
 import { EntityState } from "./common";
 
 export const CategoryMandatory = {

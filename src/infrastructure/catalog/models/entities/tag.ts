@@ -1,13 +1,13 @@
-import * as D from "io-ts/Decoder";
+import * as C from "io-ts/Codec";
 import { DateFromISOString } from "../../../../codecs/DateFromISOString";
 import { EntityState } from "./common";
 
 export const InEvidenceTagMandatory = {
-  id: D.string,
-  name: D.string,
-  type: D.literal("in-evidence"),
-  state: D.union(EntityState, D.literal("coming-soon", "archived")),
-  body: D.partial({ order: D.number }),
+  id: C.string,
+  name: C.string,
+  type: C.literal("in-evidence"),
+  state: C.literal("published", "draft", "coming-soon", "archived"),
+  body: C.partial({ order: C.number }),
 };
 
 export const InEvidenceTagOptional = {};
@@ -17,37 +17,37 @@ export const InEvidenceTagProps = {
   ...InEvidenceTagOptional,
 };
 
-const BannerTagCommon = D.partial({
-  order: D.number,
-  title: D.string,
-  description: D.string,
-  image: D.boolean,
-  background: D.array(D.string),
-  template: D.literal("1/2", "2/3"),
+const BannerTagCommon = C.partial({
+  order: C.number,
+  title: C.string,
+  description: C.string,
+  image: C.boolean,
+  background: C.array(C.string),
+  template: C.literal("1/2", "2/3"),
   startDate: DateFromISOString,
   endDate: DateFromISOString,
-  warehouseID: D.string,
+  warehouseID: C.string,
 });
 
 export const BannerTagMandatory = {
-  id: D.string,
-  name: D.string,
-  type: D.literal("banner"),
-  state: D.union(EntityState, D.literal("archived")),
-  body: D.union(
-    D.intersect(D.struct({ subType: D.literal("product-collection") }))(
+  id: C.string,
+  name: C.string,
+  type: C.literal("banner"),
+  state: C.literal("published", "draft", "archived"),
+  body: C.sum("subType")({
+    "product-collection": C.intersect(
+      C.struct({ subType: C.literal("product-collection") })
+    )(BannerTagCommon),
+    "microcategory-collection": C.intersect(
+      C.struct({ subType: C.literal("microcategory-collection") })
+    )(BannerTagCommon),
+    subcategory: C.intersect(C.struct({ subType: C.literal("subcategory") }))(
       BannerTagCommon
     ),
-    D.intersect(D.struct({ subType: D.literal("microcategory-collection") }))(
-      BannerTagCommon
+    link: C.intersect(C.struct({ subType: C.literal("link") }))(
+      C.intersect(C.struct({ path: C.string }))(BannerTagCommon)
     ),
-    D.intersect(D.struct({ subType: D.literal("subcategory") }))(
-      BannerTagCommon
-    ),
-    D.intersect(D.struct({ subType: D.literal("link") }))(
-      D.intersect(D.struct({ path: D.string }))(BannerTagCommon)
-    )
-  ),
+  }),
 };
 
 export const BannerTagOptional = {};
@@ -62,8 +62,8 @@ export const TagProps = {
   ...InEvidenceTagProps,
 };
 
-export const Tag = D.union(
-  D.struct(InEvidenceTagProps),
-  D.struct(BannerTagProps)
-);
-export type Tag = D.TypeOf<typeof Tag>;
+export const Tag = C.sum("type")({
+  "in-evidence": C.struct(InEvidenceTagProps),
+  banner: C.struct(BannerTagProps),
+});
+export type Tag = C.TypeOf<typeof Tag>;
