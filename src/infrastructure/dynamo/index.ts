@@ -31,16 +31,19 @@ interface DynamoIntrastructureInterface {
 export class DynamoInfrastructure implements DynamoIntrastructureInterface {
   tableName: string;
 
-  constructor(private appDynamoRepository: AWS.DynamoDB) {
+  constructor(
+    private appDynamoRepository: AWS.DynamoDB,
+    DynamoTableEnvVar = "AWS_DYNAMO_CATALOG_TABLE"
+  ) {
     const env = decodeOrThrow(
       D.struct({
-        AWS_DYNAMO_CATALOG_TABLE: D.string,
+        [DynamoTableEnvVar]: D.string,
       }),
       process.env,
       "ProcessEnv"
     );
 
-    this.tableName = env.AWS_DYNAMO_CATALOG_TABLE;
+    this.tableName = env[DynamoTableEnvVar];
   }
 
   public putDbRows = (
