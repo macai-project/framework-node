@@ -1,4 +1,4 @@
-import { EventBridgeEvent } from "aws-lambda";
+import { EventBridgeEvent, APIGatewayProxyEvent } from "aws-lambda";
 import * as Sentry from "@sentry/serverless";
 import * as C from "io-ts/Codec";
 import * as D from "io-ts/Decoder";
@@ -23,16 +23,23 @@ import { DateFromISOString } from "./codecs/DateFromISOString";
 import { decodeOrThrow } from "./codecs/utils";
 
 type SchemaRecord<K extends string> = Record<K, C.Codec<unknown, any, any>>;
-type Config<O, A, K extends string> = {
+type EventLambdaConfig<A, K extends string> = {
   eventDetailSchema: D.Decoder<unknown, A>;
+  envSchema?: SchemaRecord<K>;
+};
+type HttpLambdaConfig<A, K extends string> = {
+  body: D.Decoder<unknown, A>;
+  headers?: SchemaRecord<K>;
   envSchema?: SchemaRecord<K>;
 };
 
 const parTraverse = traverseWithIndex(taskEither.ApplicativePar);
 
-const getEnvValues = <K extends string>(
+const parseRecordValues = <K extends string>(
   envSchemaRecord: Record<K, D.Decoder<unknown, string>>,
-  envRuntime: NodeJS.ProcessEnv
+  envRuntime: {
+    [key: string]: string | undefined;
+  }
 ): taskEither.TaskEither<string, Record<K, string>> => {
   return pipe(
     envSchemaRecord,
@@ -66,12 +73,12 @@ export type EventMeta = {
   "detail-type": string;
 };
 
-export const _lambda =
+export const _eventLambda =
   <O, A, R, K extends string = never>(
     wrapperFunc: WrapHandler<EventBridgeEvent<string, O>, R | void>,
     envRuntime = process.env
   ) =>
-  ({ eventDetailSchema, envSchema }: Config<O, A, K>) =>
+  ({ eventDetailSchema, envSchema }: EventLambdaConfig<A, K>) =>
   (
     handler: ({
       event,
@@ -109,7 +116,7 @@ export const _lambda =
         taskEither.bind("eventMeta", () => taskEither.of(eventMeta)),
         taskEither.bind("env", () =>
           envSchema
-            ? getEnvValues(envSchema, envRuntime)
+            ? parseRecordValues(envSchema, envRuntime)
             : taskEither.of(undefined)
         ),
         taskEither.chain(handler)
@@ -138,16 +145,98 @@ export const _lambda =
     });
   };
 
-export const getLambda = <O, A, R, K extends string = never>(
-  i: Config<O, A, K>
+export const _httpLambda =
+  <A, R, K extends string = never>(
+    wrapperFunc: WrapHandler<APIGatewayProxyEvent, R | void>,
+    envRuntime = process.env
+  ) =>
+  (config: HttpLambdaConfig<A, K>) =>
+  (
+    handler: ({
+      body,
+      headers,
+      env,
+    }: {
+      body: A;
+      headers: Record<K, string> | undefined;
+      env: Record<K, string> | undefined;
+    }) => taskEither.TaskEither<unknown, R>
+  ) => {
+    return wrapperFunc((event: APIGatewayProxyEvent) => {
+      debug("parsing body: ", config.body);
+
+      const parsedBody = pipe(
+        parse(config.body, event.body),
+        taskEither.fromEither,
+        taskEither.map((v) => {
+          debug("parsed body successfully: ", v);
+          return v;
+        }),
+        taskEither.mapLeft((e) => `Incorrect Body Detail: ${draw(e)}`)
+      );
+
+      // we build the task making sure to have a readable error if the decoding fails
+      const handlerTask = pipe(
+        taskEither.Do,
+        taskEither.bind("body", () => parsedBody),
+        taskEither.bind("env", () =>
+          config.envSchema
+            ? parseRecordValues(config.envSchema, envRuntime)
+            : taskEither.of(undefined)
+        ),
+        taskEither.bind("headers", () =>
+          config.headers
+            ? parseRecordValues(config.headers, event.headers)
+            : taskEither.of(undefined)
+        ),
+        taskEither.chain(handler)
+      );
+
+      // we throw in case of error
+      return handlerTask()
+        .then((result) => {
+          if (either.isLeft(result)) {
+            if (string.isString(result.left)) {
+              throw `[node-framework] ${result.left}`;
+            } else {
+              debug("unknown error...: ", result.left);
+              throw new Error("[node-framework] handler unknown error");
+            }
+          }
+
+          debug("handler succeded with payload: ", result.right);
+
+          return result.right;
+        })
+        .catch((e) => {
+          debug("handler failed!: ", e);
+          throw e;
+        });
+    });
+  };
+
+export const getEventLambda = <O, A, R, K extends string = never>(
+  i: EventLambdaConfig<A, K>
 ) => {
-  return _lambda(Sentry.AWSLambda.wrapHandler)(i) as unknown as (
+  return _eventLambda(Sentry.AWSLambda.wrapHandler)(i) as unknown as (
     f: (i: {
       event: A;
       env: Record<K, string> | undefined;
       eventMeta: EventMeta;
     }) => taskEither.TaskEither<unknown, R>
   ) => WrapHandler<EventBridgeEvent<string, O>, R | void>;
+};
+
+export const getHttpLambda = <A, R, K extends string = never>(
+  i: HttpLambdaConfig<A, K>
+) => {
+  return _httpLambda(Sentry.AWSLambda.wrapHandler)(i) as unknown as (
+    f: (i: {
+      event: A;
+      env: Record<K, string> | undefined;
+      eventMeta: EventMeta;
+    }) => taskEither.TaskEither<unknown, R>
+  ) => WrapHandler<APIGatewayProxyEvent, R | void>;
 };
 
 type InitResult<

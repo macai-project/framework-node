@@ -1,8 +1,6 @@
 import { Functor2 } from "fp-ts/Functor";
 import { Monad2 } from "fp-ts/Monad";
-import { Alternative2 } from "fp-ts/Alternative";
 import { Applicative2 } from "fp-ts/Applicative";
-import { Foldable2 } from "fp-ts/Foldable";
 
 import { array, either, task, writer } from "fp-ts";
 import { pipe } from "fp-ts/function";

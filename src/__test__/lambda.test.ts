@@ -1,6 +1,6 @@
 import { EventBridgeEvent } from "aws-lambda";
 import { identity } from "fp-ts/function";
-import { _lambda } from "..";
+import { _eventLambda } from "..";
 import * as C from "io-ts/Codec";
 import { NumberFromString } from "../codecs";
 import { taskEither } from "fp-ts";
@@ -21,7 +21,7 @@ const getEventBridgeEvent = <D>(detail: D): EventBridgeEvent<string, D> => ({
 });
 
 const getLambda = <O, A, R, E extends string = never>(e?: NodeJS.ProcessEnv) =>
-  _lambda<O, A, R, E>(wrapperMock, e);
+  _eventLambda<O, A, R, E>(wrapperMock, e);
 
 describe("lambda", () => {
   it("given lambda, when handler is successful and event has correct payload, lambda returns the expected value", async () => {
