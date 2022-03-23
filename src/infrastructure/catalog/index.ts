@@ -121,7 +121,7 @@ export class CatalogInfrastructure
     relation_id: string;
     source_data?: Record<string, unknown>;
     target_data?: Record<string, unknown>;
-  }): taskEither.TaskEither<string, TransactWriteItemsOutput> {
+  }): taskEither.TaskEither<string, TransactWriteItemsOutput[]> {
     const transaction = this.getDbPutTransaction(i);
 
     return pipe(

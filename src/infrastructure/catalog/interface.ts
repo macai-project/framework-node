@@ -48,18 +48,18 @@ export interface CatalogIntrastructureInterface {
   createRelation(i: {
     relationSource: { type: EntityType; id: string };
     relationTarget: { type: EntityType; id: string };
-  }): taskEither.TaskEither<string, TransactWriteItemsOutput>;
+  }): taskEither.TaskEither<string, TransactWriteItemsOutput[]>;
 
   removeEntity(t: EntityType, id: string): taskEither.TaskEither<string, void>;
   createEntity(
     id: string,
     e: Entity
-  ): taskEither.TaskEither<string, TransactWriteItemsOutput>;
+  ): taskEither.TaskEither<string, TransactWriteItemsOutput[]>;
   updateEntity<E extends Entity>(
     i: {
       type: E["type"];
       id: string;
     },
     u: EntityUpdate<E["body"]>
-  ): taskEither.TaskEither<string, TransactWriteItemsOutput>;
+  ): taskEither.TaskEither<string, TransactWriteItemsOutput[]>;
 }

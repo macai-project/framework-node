@@ -18,7 +18,7 @@ import { pipe } from "fp-ts/lib/function";
 interface DynamoIntrastructureInterface {
   putDbRows(
     i: TransactWriteItem[]
-  ): taskEither.TaskEither<string, TransactWriteItemsOutput>;
+  ): taskEither.TaskEither<string, TransactWriteItemsOutput[]>;
   getDbRow(k: Key): taskEither.TaskEither<string, unknown>;
   query(k: QueryInput): taskEither.TaskEither<unknown, unknown>;
   getNestedUpdateTransaction(k: {
@@ -48,34 +48,39 @@ export class DynamoInfrastructure implements DynamoIntrastructureInterface {
 
   public putDbRows = (
     i: TransactWriteItem[]
-  ): taskEither.TaskEither<string, TransactWriteItemsOutput> => {
+  ): taskEither.TaskEither<string, TransactWriteItemsOutput[]> => {
     debug(`executing transaction`, i);
 
     if (i.length === 0) {
       return taskEither.left("no rows to update!");
     }
 
-    return taskEither.tryCatch(
-      () =>
-        this.appDynamoRepository
-          .transactWriteItems({
-            TransactItems: i,
-          })
-          .promise()
-          .then((r) => {
-            if (r.$response.error) {
-              throw r.$response.error;
-            }
+    return pipe(
+      pipe(i, array.chunksOf(25)),
+      array.traverse(taskEither.ApplicativeSeq)((transactions) => {
+        return taskEither.tryCatch(
+          () =>
+            this.appDynamoRepository
+              .transactWriteItems({
+                TransactItems: i,
+              })
+              .promise()
+              .then((r) => {
+                if (r.$response.error) {
+                  throw r.$response.error;
+                }
 
-            debug("putDbRows success: ", r);
-            return r.$response.data as TransactWriteItemsOutput;
-          })
-          .catch((e) => {
-            debug("putDbRows error: ", e);
+                debug("putDbRows success: ", r);
+                return r.$response.data as TransactWriteItemsOutput;
+              })
+              .catch((e) => {
+                debug("putDbRows error: ", e);
 
-            throw e;
-          }),
-      (e) => String(e)
+                throw e;
+              }),
+          (e) => String(e)
+        );
+      })
     );
   };
 
