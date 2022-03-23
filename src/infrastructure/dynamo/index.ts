@@ -108,12 +108,13 @@ export class DynamoInfrastructure implements DynamoIntrastructureInterface {
     );
   };
 
-  public query = (q: QueryInput) => {
-    debug(`querying DB...`, q);
+  public query = (q: Omit<QueryInput, "TableName">) => {
+    const query = { ...q, TableName: this.tableName };
+    debug(`querying DB...`, query);
 
     const queryDB = () =>
       this.appDynamoRepository
-        .query(q)
+        .query(query)
         .promise()
         .then((result) => {
           return result.Items

@@ -143,7 +143,6 @@ export class CatalogInfrastructure
 
     const queryInput = {
       IndexName: indexName,
-      TableName: this.tableName,
       ExpressionAttributeValues: expressionAttributeValues,
       KeyConditionExpression: keyConditionExpression,
       ProjectionExpression: "id, relation_id",
