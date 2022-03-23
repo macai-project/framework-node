@@ -57,12 +57,12 @@ export class DynamoInfrastructure implements DynamoIntrastructureInterface {
 
     return pipe(
       pipe(i, array.chunksOf(25)),
-      array.traverse(taskEither.ApplicativeSeq)((transactions) => {
+      array.traverse(taskEither.ApplicativeSeq)((transactItems) => {
         return taskEither.tryCatch(
           () =>
             this.appDynamoRepository
               .transactWriteItems({
-                TransactItems: i,
+                TransactItems: transactItems,
               })
               .promise()
               .then((r) => {
