@@ -15,7 +15,7 @@ const decoder: D.Decoder<unknown, unknown> = pipe(
 );
 
 const encoder: E.Encoder<string, unknown> = {
-  encode: String,
+  encode: JSON.stringify,
 };
 
 export const JSONFromString: C.Codec<unknown, string, unknown> = C.make(
