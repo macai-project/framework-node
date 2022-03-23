@@ -166,13 +166,19 @@ export const _httpLambda =
       debug("parsing body: ", config.body);
 
       const parsedBody = pipe(
-        parse(config.body, event.body),
+        either.tryCatch(
+          () => (event.body ? JSON.parse(event.body) : null),
+          () => `event.body not JSON parsable: ${event.body}`
+        ),
+        either.chainW((jsonParsedBody) => parse(config.body, jsonParsedBody)),
         taskEither.fromEither,
         taskEither.map((v) => {
           debug("parsed body successfully: ", v);
           return v;
         }),
-        taskEither.mapLeft((e) => `Incorrect Body Detail: ${draw(e)}`)
+        taskEither.mapLeft((e) =>
+          string.isString(e) ? e : `Incorrect Body Detail: ${draw(e)}`
+        )
       );
 
       // we build the task making sure to have a readable error if the decoding fails
