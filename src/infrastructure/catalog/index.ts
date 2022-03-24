@@ -154,10 +154,10 @@ export class CatalogInfrastructure
 
     return pipe(
       getDBRows,
-      taskEither.chain((v) =>
+      taskEither.chainW((v) =>
         taskEither.fromEither(D.array(TableEntryIDs).decode(v))
       ),
-      taskEither.mapLeft((v) => D.draw(v))
+      taskEither.mapLeft((v) => (string.isString(v) ? v : D.draw(v)))
     );
   }
 

@@ -1,8 +1,8 @@
-import { array, record, taskEither } from "fp-ts";
+import { array, record, string, taskEither } from "fp-ts";
 import * as D from "io-ts/Decoder";
 import { logger } from "../..";
 import { decodeOrThrow } from "../../codecs/utils";
-import AWS from "aws-sdk";
+import AWS, { AWSError } from "aws-sdk";
 import {
   ExpressionAttributeNameMap,
   ExpressionAttributeValueMap,
@@ -20,7 +20,9 @@ interface DynamoIntrastructureInterface {
     i: TransactWriteItem[]
   ): taskEither.TaskEither<string, TransactWriteItemsOutput[]>;
   getDbRow(k: Key): taskEither.TaskEither<string, unknown>;
-  query(k: QueryInput): taskEither.TaskEither<unknown, unknown>;
+  query(
+    k: Omit<QueryInput, "TableName">
+  ): taskEither.TaskEither<string, unknown>;
   getNestedUpdateTransaction(k: {
     id: string;
     relation_id: string;
@@ -122,6 +124,9 @@ export class DynamoInfrastructure implements DynamoIntrastructureInterface {
         .query(query)
         .promise()
         .then((result) => {
+          if (result.$response.error) {
+            throw result.$response.error;
+          }
           return result.Items
             ? result.Items.map((v) => AWS.DynamoDB.Converter.unmarshall(v))
             : undefined;
@@ -132,9 +137,15 @@ export class DynamoInfrastructure implements DynamoIntrastructureInterface {
           return r;
         });
 
-    return taskEither.tryCatch(queryDB, (e: any) => {
-      debug(`failed querying the DB! ${e?.message}`, e);
-      return e;
+    return taskEither.tryCatch(queryDB, (e) => {
+      const printedError =
+        e instanceof Error
+          ? e.message
+          : string.isString(e)
+          ? e
+          : "unknown error when querying the db";
+      debug(`failed querying the DB! ${e instanceof Error ? e.message : e}`, e);
+      return printedError;
     });
   };
 
