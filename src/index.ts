@@ -238,7 +238,7 @@ export const getHttpLambda = <A, R, K extends string = never>(
 ) => {
   return _httpLambda(Sentry.AWSLambda.wrapHandler)(i) as unknown as (
     f: (i: {
-      event: A;
+      body: A;
       env: Record<K, string> | undefined;
       eventMeta: EventMeta;
     }) => taskEither.TaskEither<unknown, R>

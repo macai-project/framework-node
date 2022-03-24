@@ -57,11 +57,6 @@ export const BannerTagProps = {
   ...BannerTagOptional,
 };
 
-export const TagProps = {
-  ...BannerTagProps,
-  ...InEvidenceTagProps,
-};
-
 export const Tag = C.sum("type")({
   "in-evidence": C.struct(InEvidenceTagProps),
   banner: C.struct(BannerTagProps),
