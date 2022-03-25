@@ -341,7 +341,7 @@ export class CatalogInfrastructure
                 ExpressionAttributeValues: {
                   ":x": {
                     M: AWS.DynamoDB.Converter.marshall(
-                      Entity.encode({ type, body: updatedBody } as Entity)
+                      Entity.encode({ type, body: updatedBody } as Entity).body
                     ),
                   },
                 },
@@ -366,7 +366,11 @@ export class CatalogInfrastructure
                 },
                 UpdateExpression: "set target_data = :x",
                 ExpressionAttributeValues: {
-                  ":x": { M: AWS.DynamoDB.Converter.marshall(updatedBody) },
+                  ":x": {
+                    M: AWS.DynamoDB.Converter.marshall(
+                      Entity.encode({ type, body: updatedBody } as Entity).body
+                    ),
+                  },
                 },
               },
             };
