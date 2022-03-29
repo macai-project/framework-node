@@ -3,11 +3,16 @@ import * as D from "io-ts/Decoder";
 import * as E from "io-ts/Encoder";
 import { pipe } from "fp-ts/lib/function";
 
-const NonEmptyStringDecoder: D.Decoder<unknown, string> =
-  pipe(
-    D.string,
-    D.parse(s => s.length > 0 ? D.success(s) : D.failure(s, "Empty string"))
-  )
-const NonEmptyStringEncoder: E.Encoder<string, string> = { encode: C.string.encode }
+interface NonEmptyStringBrand {
+  readonly NonEmptyString: unique symbol
+}
+type NonEmptyString = string & NonEmptyStringBrand
 
-export const NonEmptyString: C.Codec<unknown, string, string> = C.make(NonEmptyStringDecoder, NonEmptyStringEncoder)
+const decoder: D.Decoder<unknown, NonEmptyString> = pipe(
+  D.string,
+  D.refine((s): s is NonEmptyString => s.length > 0, 'NonEmptyString')
+)
+const encoder: E.Encoder<string, NonEmptyString> = {
+  encode: C.string.encode
+}
+const NonEmptyString = C.make(decoder, encoder)
