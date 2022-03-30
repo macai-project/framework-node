@@ -1,6 +1,5 @@
 import * as C from "io-ts/Codec";
 import { DateFromISOString } from "../../../../codecs/DateFromISOString";
-import { EntityState } from "./common";
 
 export const InEvidenceTagMandatory = {
   id: C.string,
@@ -55,6 +54,7 @@ export const BannerTagOptional = {};
 export const BannerTagProps = {
   ...BannerTagMandatory,
   ...BannerTagOptional,
+  type: C.literal("in-evidence", "banner"),
 };
 
 export const Tag = C.sum("type")({

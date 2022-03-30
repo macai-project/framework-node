@@ -47,6 +47,7 @@ export const ItemProps = {
   ...ItemOptional,
   ...ItemPublishedMandatory,
   ...ItemMandatory,
+  state: C.literal("draft", "published"),
 };
 
 const DraftedItemMandatory = C.intersect(
