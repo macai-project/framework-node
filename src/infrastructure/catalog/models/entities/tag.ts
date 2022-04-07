@@ -25,7 +25,7 @@ const BannerTagCommon = C.partial({
   template: C.literal("1/2", "2/3"),
   startDate: DateFromISOString,
   endDate: DateFromISOString,
-  warehouseID: C.string,
+  warehouseIds: C.array(C.string),
 });
 
 export const BannerTagMandatory = {
