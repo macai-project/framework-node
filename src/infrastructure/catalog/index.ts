@@ -157,7 +157,9 @@ export class CatalogInfrastructure
       taskEither.chainW((v) =>
         taskEither.fromEither(D.array(TableEntryIDs).decode(v))
       ),
-      taskEither.mapLeft((v) => (string.isString(v) ? v : D.draw(v)))
+      taskEither.mapLeft((v) =>
+        string.isString(v) ? v : `error decoding TableEntryIDs ${D.draw(v)}`
+      )
     );
   }
 
@@ -198,14 +200,15 @@ export class CatalogInfrastructure
     updater: Replacement<E["body"]> | PartialUpdate<E["body"]>
   ): taskEither.TaskEither<string, E["body"]> => {
     const decoder = this.getEntityDecoder(type);
-    const dbRow = this.getDbRow({
+    const rowKeys = {
       id: {
         S: itemId,
       },
       relation_id: {
         S: this.getDynamoEntityTag(Countries.it, type),
       },
-    });
+    };
+    const dbRow = this.getDbRow(rowKeys);
 
     return pipe(
       dbRow,
@@ -213,7 +216,10 @@ export class CatalogInfrastructure
         taskEither.fromEither(decoder.decode(v?.source_data))
       ),
       taskEither.bimap(
-        (e) => (isString(e) ? e : D.draw(e)),
+        (e) =>
+          isString(e)
+            ? e
+            : `failed getUpdatedBody for ${rowKeys}: ${D.draw(e)}`,
         (v) => this.applyUpdater(updater, v)
       )
     );
