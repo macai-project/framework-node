@@ -212,14 +212,18 @@ export class CatalogInfrastructure
 
     return pipe(
       dbRow,
-      taskEither.chainW((v) =>
-        taskEither.fromEither(decoder.decode(v?.source_data))
-      ),
+      taskEither.chainW((v) => {
+        debug("retrieved data:", v);
+
+        return taskEither.fromEither(decoder.decode(v?.source_data));
+      }),
       taskEither.bimap(
         (e) =>
           isString(e)
             ? e
-            : `failed getUpdatedBody for ${rowKeys}: ${D.draw(e)}`,
+            : `failed getUpdatedBody for ${JSON.stringify(rowKeys)}: ${D.draw(
+                e
+              )}`,
         (v) => this.applyUpdater(updater, v)
       )
     );
