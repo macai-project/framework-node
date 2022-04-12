@@ -80,6 +80,7 @@ export const _eventLambda =
       event: A;
       eventMeta: EventMeta;
       env: Record<K, string> | undefined;
+      logStore: LogStore;
     }) => taskEither.TaskEither<unknown, R>
   ) => {
     return wrapperFunc((event: EventBridgeEvent<string, O>) => {
@@ -116,7 +117,7 @@ export const _eventLambda =
             ? parseRecordValues(envSchema, envRuntime, logStore)
             : taskEither.of(undefined)
         ),
-        taskEither.chain(handler)
+        taskEither.chain((i) => handler({ ...i, logStore }))
       );
 
       // we throw in case of error
@@ -157,6 +158,7 @@ export const _httpLambda =
       body: A;
       headers: Record<K, string> | undefined;
       env: Record<K, string> | undefined;
+      logStore: LogStore;
     }) => taskEither.TaskEither<unknown, R>
   ) => {
     return wrapperFunc((event: APIGatewayProxyEvent) => {
@@ -196,7 +198,7 @@ export const _httpLambda =
             ? parseRecordValues(config.headers, event.headers, logStore)
             : taskEither.of(undefined)
         ),
-        taskEither.chain(handler)
+        taskEither.chain((i) => handler({ ...i, logStore }))
       );
 
       // we throw in case of error
