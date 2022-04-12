@@ -1,8 +1,7 @@
 import { array, record, string, taskEither } from "fp-ts";
 import * as D from "io-ts/Decoder";
-import { logger } from "../..";
 import { decodeOrThrow } from "../../codecs/utils";
-import AWS, { AWSError } from "aws-sdk";
+import AWS from "aws-sdk";
 import {
   ExpressionAttributeNameMap,
   ExpressionAttributeValueMap,
@@ -11,9 +10,9 @@ import {
   TransactWriteItemsOutput,
 } from "aws-sdk/clients/dynamodb";
 import { Key } from "aws-sdk/clients/dynamodb";
-import { debug } from "../../logger";
 import { CustomUpdate } from "../catalog/interface";
 import { pipe } from "fp-ts/lib/function";
+import { LogStore } from "../../Logger/LogStore";
 
 interface DynamoIntrastructureInterface {
   putDbRows(
@@ -35,6 +34,7 @@ export class DynamoInfrastructure implements DynamoIntrastructureInterface {
 
   constructor(
     private appDynamoRepository: AWS.DynamoDB,
+    protected logStore: LogStore,
     DynamoTableEnvVar = "AWS_DYNAMO_CATALOG_TABLE"
   ) {
     const env = decodeOrThrow(
@@ -51,7 +51,7 @@ export class DynamoInfrastructure implements DynamoIntrastructureInterface {
   public putDbRows = (
     i: TransactWriteItem[]
   ): taskEither.TaskEither<string, TransactWriteItemsOutput[]> => {
-    debug(`executing transaction`, i);
+    this.logStore.appendLog([`executing transaction`, i]);
 
     if (i.length === 0) {
       return taskEither.left("no rows to update!");
@@ -72,11 +72,11 @@ export class DynamoInfrastructure implements DynamoIntrastructureInterface {
                   throw r.$response.error;
                 }
 
-                debug("putDbRows success: ", r);
+                this.logStore.appendLog(["putDbRows success: ", r]);
                 return r.$response.data as TransactWriteItemsOutput;
               })
               .catch((e) => {
-                debug("putDbRows error: ", e);
+                this.logStore.appendLog(["putDbRows error: ", e]);
 
                 throw e;
               }),
@@ -88,7 +88,7 @@ export class DynamoInfrastructure implements DynamoIntrastructureInterface {
 
   public getDbRow = (k: Key) => {
     const result = () => {
-      debug(`getting item with keys ${JSON.stringify(k)}`);
+      this.logStore.appendLog([`getting item with keys ${JSON.stringify(k)}`]);
 
       return this.appDynamoRepository
         .getItem({
@@ -101,7 +101,10 @@ export class DynamoInfrastructure implements DynamoIntrastructureInterface {
             const unmarshalledResult = AWS.DynamoDB.Converter.unmarshall(
               result.Item
             );
-            debug("row fetched from DB: ", unmarshalledResult);
+            this.logStore.appendLog([
+              "row fetched from DB: ",
+              unmarshalledResult,
+            ]);
             return unmarshalledResult;
           }
 
@@ -117,7 +120,7 @@ export class DynamoInfrastructure implements DynamoIntrastructureInterface {
 
   public query = (q: Omit<QueryInput, "TableName">) => {
     const query = { ...q, TableName: this.tableName };
-    debug(`querying DB...`, query);
+    this.logStore.appendLog([`querying DB...`, query]);
 
     const queryDB = () =>
       this.appDynamoRepository
@@ -132,7 +135,7 @@ export class DynamoInfrastructure implements DynamoIntrastructureInterface {
             : undefined;
         })
         .then((r) => {
-          debug(`successful query`, r);
+          this.logStore.appendLog([`successful query`, r]);
 
           return r;
         });
@@ -144,7 +147,10 @@ export class DynamoInfrastructure implements DynamoIntrastructureInterface {
           : string.isString(e)
           ? e
           : "unknown error when querying the db";
-      debug(`failed querying the DB! ${e instanceof Error ? e.message : e}`, e);
+      this.logStore.appendLog([
+        `failed querying the DB! ${e instanceof Error ? e.message : e}`,
+        e,
+      ]);
       return printedError;
     });
   };
@@ -180,7 +186,7 @@ export class DynamoInfrastructure implements DynamoIntrastructureInterface {
     relation_id: string;
     customUpdate: CustomUpdate;
   }): TransactWriteItem => {
-    debug("applying nested update", customUpdate.values);
+    this.logStore.appendLog(["applying nested update", customUpdate.values]);
 
     const updatesAsString = pipe(
       Object.entries(customUpdate.values),

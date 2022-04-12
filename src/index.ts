@@ -2,25 +2,16 @@ import { EventBridgeEvent, APIGatewayProxyEvent } from "aws-lambda";
 import * as Sentry from "@sentry/serverless";
 import * as C from "io-ts/Codec";
 import * as D from "io-ts/Decoder";
-import { DynamoDB } from "aws-sdk";
-import {
-  createDynamoClient,
-  createAuroraPool,
-  createEventBridgeClient,
-  MySQLPool,
-  createAppSyncClient,
-  AWSAppSyncClient,
-} from "./repository";
 import { parse } from "./parse";
 import { pipe } from "fp-ts/lib/function";
 import { string, either, taskEither } from "fp-ts";
 import { draw } from "io-ts/lib/Decoder";
 import { WrapHandler } from "./handler";
 import { traverseWithIndex } from "fp-ts/lib/Record";
-import { debug } from "./logger";
-import { EventBridgeClient } from "@aws-sdk/client-eventbridge";
 import { DateFromISOString } from "./codecs/DateFromISOString";
 import { decodeOrThrow } from "./codecs/utils";
+import { LogStore } from "./Logger/LogStore";
+import { getPinoLogger } from "./Logger/Logger";
 
 type SchemaRecord<K extends string> = Record<K, C.Codec<unknown, any, any>>;
 type EventLambdaConfig<A, K extends string> = {
@@ -39,19 +30,20 @@ const parseRecordValues = <K extends string>(
   envSchemaRecord: Record<K, D.Decoder<unknown, string>>,
   envRuntime: {
     [key: string]: string | undefined;
-  }
+  },
+  logStore: LogStore
 ): taskEither.TaskEither<string, Record<K, string>> => {
   return pipe(
     envSchemaRecord,
     parTraverse((key, codec) => {
       const decoderRecord = D.struct({ [key]: codec });
-      debug("parsing env: ", envSchemaRecord);
+      logStore.appendLog(["parsing env: ", envSchemaRecord]);
 
       return pipe(
         parse(decoderRecord, { [key]: envRuntime[key] }),
         taskEither.fromEither,
         taskEither.map((v) => {
-          debug("parsed env successfully!");
+          logStore.appendLog(["parsed env successfully!"]);
           return v[key];
         })
       );
@@ -91,7 +83,12 @@ export const _eventLambda =
     }) => taskEither.TaskEither<unknown, R>
   ) => {
     return wrapperFunc((event: EventBridgeEvent<string, O>) => {
-      debug("parsing event: ", event.detail);
+      const logStore = new LogStore(
+        getPinoLogger({ name: "framework-node" }),
+        500
+      );
+
+      logStore.appendLog(["parsing event: ", event.detail]);
 
       const eventMeta = {
         ...event,
@@ -103,7 +100,7 @@ export const _eventLambda =
         parse(eventDetailSchema, event.detail),
         taskEither.fromEither,
         taskEither.map((v) => {
-          debug("parsed event successfully: ", v);
+          logStore.appendLog(["parsed event successfully: ", v]);
           return v;
         }),
         taskEither.mapLeft((e) => `Incorrect Event Detail: ${draw(e)}`)
@@ -116,7 +113,7 @@ export const _eventLambda =
         taskEither.bind("eventMeta", () => taskEither.of(eventMeta)),
         taskEither.bind("env", () =>
           envSchema
-            ? parseRecordValues(envSchema, envRuntime)
+            ? parseRecordValues(envSchema, envRuntime, logStore)
             : taskEither.of(undefined)
         ),
         taskEither.chain(handler)
@@ -129,17 +126,17 @@ export const _eventLambda =
             if (string.isString(result.left)) {
               throw `[node-framework] ${result.left}`;
             } else {
-              debug("unknown error...: ", result.left);
+              logStore.appendLog(["unknown error...: ", result.left]);
               throw new Error("[node-framework] handler unknown error");
             }
           }
 
-          debug("handler succeded with payload: ", result.right);
+          logStore.appendLog(["handler succeded with payload: ", result.right]);
 
           return result.right;
         })
         .catch((e) => {
-          debug("handler failed!: ", e);
+          logStore.appendLog(["handler failed!: ", e]);
           throw e;
         });
     });
@@ -163,7 +160,11 @@ export const _httpLambda =
     }) => taskEither.TaskEither<unknown, R>
   ) => {
     return wrapperFunc((event: APIGatewayProxyEvent) => {
-      debug("parsing body: ", config.body);
+      const logStore = new LogStore(
+        getPinoLogger({ name: "framework-node" }),
+        500
+      );
+      logStore.appendLog(["parsing body: ", config.body]);
 
       const parsedBody = pipe(
         either.tryCatch(
@@ -173,7 +174,7 @@ export const _httpLambda =
         either.chainW((jsonParsedBody) => parse(config.body, jsonParsedBody)),
         taskEither.fromEither,
         taskEither.map((v) => {
-          debug("parsed body successfully: ", v);
+          logStore.appendLog(["parsed body successfully: ", v]);
           return v;
         }),
         taskEither.mapLeft((e) =>
@@ -187,12 +188,12 @@ export const _httpLambda =
         taskEither.bind("body", () => parsedBody),
         taskEither.bind("env", () =>
           config.envSchema
-            ? parseRecordValues(config.envSchema, envRuntime)
+            ? parseRecordValues(config.envSchema, envRuntime, logStore)
             : taskEither.of(undefined)
         ),
         taskEither.bind("headers", () =>
           config.headers
-            ? parseRecordValues(config.headers, event.headers)
+            ? parseRecordValues(config.headers, event.headers, logStore)
             : taskEither.of(undefined)
         ),
         taskEither.chain(handler)
@@ -205,17 +206,19 @@ export const _httpLambda =
             if (string.isString(result.left)) {
               throw `[node-framework] ${result.left}`;
             } else {
-              debug("unknown error...: ", result.left);
+              logStore.appendLog(["unknown error...: ", result.left]);
               throw new Error("[node-framework] handler unknown error");
             }
           }
 
-          debug("handler succeded with payload: ", result.right);
+          logStore.appendLog(["handler succeded with payload: ", result.right]);
+          logStore.reset();
 
           return result.right;
         })
         .catch((e) => {
-          debug("handler failed!: ", e);
+          logStore.appendLog(["handler failed!: ", e]);
+          logStore.reset();
           throw e;
         });
     });
@@ -245,53 +248,5 @@ export const getHttpLambda = <A, R, K extends string = never>(
   ) => WrapHandler<APIGatewayProxyEvent, R | void>;
 };
 
-type InitResult<
-  A extends boolean,
-  D extends boolean,
-  AS extends boolean,
-  EB extends boolean
-> = (A extends false ? {} : { auroraPool: MySQLPool }) &
-  (D extends false ? {} : { dynamo: DynamoDB }) &
-  (AS extends false ? {} : { appSync: AWSAppSyncClient }) &
-  (EB extends false ? {} : { eventBridge: EventBridgeClient });
-
-export function init<
-  A extends boolean = false,
-  D extends boolean = false,
-  AS extends boolean = false,
-  EB extends boolean = false
->({
-  aurora,
-  dynamo,
-  appSync,
-  eventBridge,
-  env = process.env,
-}: {
-  aurora?: A;
-  dynamo?: D;
-  appSync?: AS;
-  eventBridge?: EB;
-  env?: Record<string, string | undefined>;
-}): InitResult<A, D, AS, EB> {
-  Sentry.AWSLambda.init({
-    dsn: env.SENTRY_DSN,
-    environment: env.ENVIRONMENT,
-    tracesSampleRate: 1.0,
-  });
-
-  const auroraPool = aurora && createAuroraPool(env);
-  const dynamoClient = dynamo && createDynamoClient(env);
-  const appSyncClient = appSync && createAppSyncClient(env);
-  const eventBridgeClient = eventBridge && createEventBridgeClient(env);
-
-  return {
-    auroraPool,
-    dynamo: dynamoClient,
-    appSync: appSyncClient,
-    eventBridge: eventBridgeClient,
-  } as InitResult<A, D, AS, EB>;
-}
-
-export { default as logger } from "./logger";
-export * from "./repository";
+export * from "./init";
 export * from "./parse";

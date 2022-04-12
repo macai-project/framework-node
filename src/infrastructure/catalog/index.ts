@@ -29,7 +29,7 @@ import { DynamoInfrastructure } from "../dynamo";
 import { isString } from "fp-ts/lib/string";
 import { sequenceS } from "fp-ts/lib/Apply";
 import { Countries } from "./models/Countries";
-import { debug } from "../../logger";
+import { LogStore } from "../../Logger/LogStore";
 
 const parTraverse = traverse(taskEither.ApplicativePar);
 const parSequence = sequenceS(taskEither.ApplicativePar);
@@ -148,7 +148,7 @@ export class CatalogInfrastructure
       ProjectionExpression: "id, relation_id",
     };
 
-    debug(`getDBRows`, queryInput);
+    this.logStore.appendLog([`getDBRows`, queryInput]);
 
     const getDBRows = this.query(queryInput);
 
@@ -213,7 +213,7 @@ export class CatalogInfrastructure
     return pipe(
       dbRow,
       taskEither.chainW((v) => {
-        debug("retrieved data:", v);
+        this.logStore.appendLog(["retrieved data:", v]);
 
         return taskEither.fromEither(decoder.decode(v?.source_data));
       }),
@@ -404,8 +404,8 @@ export class CatalogInfrastructure
     });
   }
 
-  constructor(appCatalogRepository: AWS.DynamoDB) {
-    super(appCatalogRepository);
+  constructor(appCatalogRepository: AWS.DynamoDB, logStore: LogStore) {
+    super(appCatalogRepository, logStore);
   }
 
   getDBRowSourceData = (country: string, type: EntityType, id: string) => {

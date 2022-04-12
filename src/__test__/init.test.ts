@@ -1,7 +1,7 @@
 import { EventBridgeClient } from "@aws-sdk/client-eventbridge";
-import { init } from "..";
+import { init } from "../init";
 
-describe("init", () => {
+describe.only("init", () => {
   it("when initialized with eventBridge === true, it returns a eventBridge client", async () => {
     const result = init({
       eventBridge: true,

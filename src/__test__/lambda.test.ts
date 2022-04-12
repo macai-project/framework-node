@@ -23,7 +23,7 @@ const getEventBridgeEvent = <D>(detail: D): EventBridgeEvent<string, D> => ({
 const getLambda = <O, A, R, E extends string = never>(e?: NodeJS.ProcessEnv) =>
   _eventLambda<O, A, R, E>(wrapperMock, e);
 
-describe("lambda", () => {
+describe.only("lambda", () => {
   it("given lambda, when handler is successful and event has correct payload, lambda returns the expected value", async () => {
     const eventDetailSchema = C.struct({ foo: C.string, bar: C.number });
     type DetailSchema = C.TypeOf<typeof eventDetailSchema>;

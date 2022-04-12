@@ -1,7 +1,7 @@
 import { getPinoLogger } from "../Logger/Logger";
 import { LogStore } from "../Logger/LogStore";
 
-describe("LogStore", () => {
+describe.only("LogStore", () => {
   it("when logging and logs are enabled, it prints the log", async () => {
     const logger = getPinoLogger({ name: "TEST" });
     const pinoDebugSpy = jest.spyOn(logger, "debug");
