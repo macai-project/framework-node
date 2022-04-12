@@ -3,12 +3,28 @@ import { Log, Logger } from "./Logger";
 export class LogStore {
   private logs: Log[] = [];
 
-  private areLogEnabled = () => process.env.FRAMEWORK_LOGS === "true";
+  private clearStore = (l: Log) => {
+    this.logs = this.logs.concat(l);
+  };
 
-  constructor(private logger: Logger, public readonly capacity = Infinity) {}
+  private printStore = () => {
+    this.logs.forEach((l) => {
+      this.logger.debug(...l);
+    });
+  };
+
+  constructor(
+    private logger: Logger,
+    public readonly capacity = Infinity,
+    private areLogEnabled = () => process.env.FRAMEWORK_LOGS === "true"
+  ) {}
+
+  public getCapacity = () => {
+    return `${this.logs.length}/${this.capacity}`;
+  };
 
   public appendLog = (l: Log) => {
-    if (this.logs.length > this.capacity) {
+    if (this.logs.length >= this.capacity) {
       this.logger.warn(
         `MAXIMUM LOG STORE CAPACITY EXEEDED (${this.capacity} logs)`
       );
@@ -19,18 +35,10 @@ export class LogStore {
       this.logger.debug(...l);
     }
 
-    this.logs = this.logs.concat(l);
+    this.logs.push(l);
   };
 
-  public clearStore = (l: Log) => {
-    this.logs = this.logs.concat(l);
-  };
-
-  public printStore = () => {
-    this.logs.forEach((l) => this.logger.debug(...l));
-  };
-
-  public resetStore = () => {
+  public reset = () => {
     if (!this.areLogEnabled()) {
       this.printStore();
     }
