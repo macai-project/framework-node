@@ -259,18 +259,26 @@ export const _appSyncLambda =
         getPinoLogger({ name: "framework-node" }),
         500
       );
+      console.log("parsing args: ", config.args);
       logStore.appendLog(["parsing args: ", config.args]);
 
       const parsedArgs = pipe(
         parse(config.args, event.arguments),
         taskEither.fromEither,
         taskEither.map((v) => {
+          console.log("parsed args successfully: ", v);
           logStore.appendLog(["parsed args successfully: ", v]);
           return v;
         }),
-        taskEither.mapLeft((e) =>
-          string.isString(e) ? e : `Incorrect Args: ${draw(e)}`
-        )
+        taskEither.mapLeft((e) => {
+          if (string.isString(e)){
+              console.log("parsing args failed: ", e);
+              return e
+
+            } 
+            console.log("Incorrect args: ", draw(e));
+            return `Incorrect Args: ${draw(e)}`
+        })
       );
 
       // we build the task making sure to have a readable error if the decoding fails
@@ -288,6 +296,7 @@ export const _appSyncLambda =
       // we throw in case of error
       return handlerTask()
         .then((result) => {
+          console.log("result: ", result);
           if (either.isLeft(result)) {
             const error = M.AppSyncLambdaError.decode(result.left);
 
