@@ -80,246 +80,237 @@ export const _eventLambda =
     wrapperFunc: WrapHandler<EventBridgeEvent<string, O>, R | void>,
     envRuntime = process.env
   ) =>
-  ({ eventDetailSchema, envSchema }: EventLambdaConfig<A, K>) =>
-  (
-    handler: ({
-      event,
-      eventMeta,
-      env,
-    }: {
-      event: A;
-      eventMeta: EventMeta;
-      env: Record<K, string> | undefined;
-      logStore: LogStore;
-    }) => taskEither.TaskEither<unknown, R>
-  ) => {
-    return wrapperFunc((event: EventBridgeEvent<string, O>) => {
-      const logStore = new LogStore(
-        getPinoLogger({ name: "framework-node" }),
-        500
-      );
+    ({ eventDetailSchema, envSchema }: EventLambdaConfig<A, K>) =>
+      (
+        handler: ({
+          event,
+          eventMeta,
+          env,
+        }: {
+          event: A;
+          eventMeta: EventMeta;
+          env: Record<K, string> | undefined;
+          logStore: LogStore;
+        }) => taskEither.TaskEither<unknown, R>
+      ) => {
+        return wrapperFunc((event: EventBridgeEvent<string, O>) => {
+          const logStore = new LogStore(
+            getPinoLogger({ name: "framework-node" }),
+            500
+          );
 
-      logStore.appendLog(["parsing event: ", event.detail]);
+          logStore.appendLog(["parsing event: ", event.detail]);
 
-      const eventMeta = {
-        ...event,
-        time: decodeOrThrow(DateFromISOString, event.time),
-        detail: undefined,
-      };
+          const eventMeta = {
+            ...event,
+            time: decodeOrThrow(DateFromISOString, event.time),
+            detail: undefined,
+          };
 
-      const parsedEvent = pipe(
-        parse(eventDetailSchema, event.detail),
-        taskEither.fromEither,
-        taskEither.map((v) => {
-          logStore.appendLog(["parsed event successfully: ", v]);
-          return v;
-        }),
-        taskEither.mapLeft((e) => `Incorrect Event Detail: ${draw(e)}`)
-      );
+          const parsedEvent = pipe(
+            parse(eventDetailSchema, event.detail),
+            taskEither.fromEither,
+            taskEither.map((v) => {
+              logStore.appendLog(["parsed event successfully: ", v]);
+              return v;
+            }),
+            taskEither.mapLeft((e) => `Incorrect Event Detail: ${draw(e)}`)
+          );
 
-      // we build the task making sure to have a readable error if the decoding fails
-      const handlerTask = pipe(
-        taskEither.Do,
-        taskEither.bind("event", () => parsedEvent),
-        taskEither.bind("eventMeta", () => taskEither.of(eventMeta)),
-        taskEither.bind("env", () =>
-          envSchema
-            ? parseRecordValues(envSchema, envRuntime, logStore)
-            : taskEither.of(undefined)
-        ),
-        taskEither.chain((i) => handler({ ...i, logStore }))
-      );
+          // we build the task making sure to have a readable error if the decoding fails
+          const handlerTask = pipe(
+            taskEither.Do,
+            taskEither.bind("event", () => parsedEvent),
+            taskEither.bind("eventMeta", () => taskEither.of(eventMeta)),
+            taskEither.bind("env", () =>
+              envSchema
+                ? parseRecordValues(envSchema, envRuntime, logStore)
+                : taskEither.of(undefined)
+            ),
+            taskEither.chain((i) => handler({ ...i, logStore }))
+          );
 
-      // we throw in case of error
-      return handlerTask()
-        .then((result) => {
-          if (either.isLeft(result)) {
-            if (string.isString(result.left)) {
-              throw `[node-framework] ${result.left}`;
-            } else {
-              logStore.appendLog(["unknown error...: ", result.left]);
-              throw new Error("[node-framework] handler unknown error");
-            }
-          }
+          // we throw in case of error
+          return handlerTask()
+            .then((result) => {
+              if (either.isLeft(result)) {
+                if (string.isString(result.left)) {
+                  throw `[node-framework] ${result.left}`;
+                } else {
+                  logStore.appendLog(["unknown error...: ", result.left]);
+                  throw new Error("[node-framework] handler unknown error");
+                }
+              }
 
-          logStore.appendLog(["handler succeded with payload: ", result.right]);
-          logStore.reset();
+              logStore.appendLog(["handler succeded with payload: ", result.right]);
+              logStore.reset();
 
-          return result.right;
-        })
-        .catch((e) => {
-          logStore.appendLog(["handler failed!: ", e]);
-          logStore.reset();
-          throw e;
+              return result.right;
+            })
+            .catch((e) => {
+              logStore.appendLog(["handler failed!: ", e]);
+              logStore.reset();
+              throw e;
+            });
         });
-    });
-  };
+      };
 
 export const _httpLambda =
   <A, R, K extends string = never>(
     wrapperFunc: WrapHandler<APIGatewayProxyEvent, R | void>,
     envRuntime = process.env
   ) =>
-  (config: HttpLambdaConfig<A, K>) =>
-  (
-    handler: ({
-      body,
-      headers,
-      env,
-    }: {
-      body: A;
-      headers: Record<K, string> | undefined;
-      env: Record<K, string> | undefined;
-      logStore: LogStore;
-    }) => taskEither.TaskEither<unknown, R>
-  ) => {
-    return wrapperFunc((event: APIGatewayProxyEvent) => {
-      const logStore = new LogStore(
-        getPinoLogger({ name: "framework-node" }),
-        500
-      );
-      logStore.appendLog(["parsing body: ", config.body]);
+    (config: HttpLambdaConfig<A, K>) =>
+      (
+        handler: ({
+          body,
+          headers,
+          env,
+        }: {
+          body: A;
+          headers: Record<K, string> | undefined;
+          env: Record<K, string> | undefined;
+          logStore: LogStore;
+        }) => taskEither.TaskEither<unknown, R>
+      ) => {
+        return wrapperFunc((event: APIGatewayProxyEvent) => {
+          const logStore = new LogStore(
+            getPinoLogger({ name: "framework-node" }),
+            500
+          );
+          logStore.appendLog(["parsing body: ", config.body]);
 
-      const parsedBody = pipe(
-        either.tryCatch(
-          () => (event.body ? JSON.parse(event.body) : null),
-          () => `event.body not JSON parsable: ${event.body}`
-        ),
-        either.chainW((jsonParsedBody) => parse(config.body, jsonParsedBody)),
-        taskEither.fromEither,
-        taskEither.map((v) => {
-          logStore.appendLog(["parsed body successfully: ", v]);
-          return v;
-        }),
-        taskEither.mapLeft((e) =>
-          string.isString(e) ? e : `Incorrect Body Detail: ${draw(e)}`
-        )
-      );
+          const parsedBody = pipe(
+            either.tryCatch(
+              () => (event.body ? JSON.parse(event.body) : null),
+              () => `event.body not JSON parsable: ${event.body}`
+            ),
+            either.chainW((jsonParsedBody) => parse(config.body, jsonParsedBody)),
+            taskEither.fromEither,
+            taskEither.map((v) => {
+              logStore.appendLog(["parsed body successfully: ", v]);
+              return v;
+            }),
+            taskEither.mapLeft((e) =>
+              string.isString(e) ? e : `Incorrect Body Detail: ${draw(e)}`
+            )
+          );
 
-      // we build the task making sure to have a readable error if the decoding fails
-      const handlerTask = pipe(
-        taskEither.Do,
-        taskEither.bind("body", () => parsedBody),
-        taskEither.bind("env", () =>
-          config.envSchema
-            ? parseRecordValues(config.envSchema, envRuntime, logStore)
-            : taskEither.of(undefined)
-        ),
-        taskEither.bind("headers", () =>
-          config.headers
-            ? parseRecordValues(config.headers, event.headers, logStore)
-            : taskEither.of(undefined)
-        ),
-        taskEither.chain((i) => handler({ ...i, logStore }))
-      );
+          // we build the task making sure to have a readable error if the decoding fails
+          const handlerTask = pipe(
+            taskEither.Do,
+            taskEither.bind("body", () => parsedBody),
+            taskEither.bind("env", () =>
+              config.envSchema
+                ? parseRecordValues(config.envSchema, envRuntime, logStore)
+                : taskEither.of(undefined)
+            ),
+            taskEither.bind("headers", () =>
+              config.headers
+                ? parseRecordValues(config.headers, event.headers, logStore)
+                : taskEither.of(undefined)
+            ),
+            taskEither.chain((i) => handler({ ...i, logStore }))
+          );
 
-      // we throw in case of error
-      return handlerTask()
-        .then((result) => {
-          if (either.isLeft(result)) {
-            if (string.isString(result.left)) {
-              throw `[node-framework] ${result.left}`;
-            } else {
-              logStore.appendLog(["unknown error...: ", result.left]);
-              throw new Error("[node-framework] handler unknown error");
-            }
-          }
+          // we throw in case of error
+          return handlerTask()
+            .then((result) => {
+              if (either.isLeft(result)) {
+                if (string.isString(result.left)) {
+                  throw `[node-framework] ${result.left}`;
+                } else {
+                  logStore.appendLog(["unknown error...: ", result.left]);
+                  throw new Error("[node-framework] handler unknown error");
+                }
+              }
 
-          logStore.appendLog(["handler succeded with payload: ", result.right]);
-          logStore.reset();
+              logStore.appendLog(["handler succeded with payload: ", result.right]);
+              logStore.reset();
 
-          return result.right;
-        })
-        .catch((e) => {
-          logStore.appendLog(["handler failed!: ", e]);
-          logStore.reset();
-          throw e;
+              return result.right;
+            })
+            .catch((e) => {
+              logStore.appendLog(["handler failed!: ", e]);
+              logStore.reset();
+              throw e;
+            });
         });
-    });
-  };
+      };
 
 export const _appSyncLambda =
   <A, R, K extends string = never>(
     wrapperFunc: WrapHandler<AppSyncResolverEvent<A>, R | void>,
     envRuntime = process.env
   ) =>
-  (config: AppSyncLambdaConfig<A, K>) =>
-  (
-    handler: ({
-      args,
-      env,
-    }: {
-      args: A;
-      env: Record<K, string> | undefined;
-      logStore: LogStore;
-    }) => taskEither.TaskEither<unknown, R>
-  ) => {
-    return wrapperFunc((event: AppSyncResolverEvent<A>) => {
-      const logStore = new LogStore(
-        getPinoLogger({ name: "framework-node" }),
-        500
-      );
-      console.log("parsing args: ", config.args);
-      logStore.appendLog(["parsing args: ", config.args]);
+    (config: AppSyncLambdaConfig<A, K>) =>
+      (
+        handler: ({
+          args,
+          env,
+        }: {
+          args: A;
+          env: Record<K, string> | undefined;
+          logStore: LogStore;
+        }) => taskEither.TaskEither<unknown, R>
+      ) => {
+        return wrapperFunc((event: AppSyncResolverEvent<A>) => {
+          const logStore = new LogStore(
+            getPinoLogger({ name: "framework-node" }),
+            500
+          );
+          logStore.appendLog(["parsing args: ", config.args]);
 
-      const parsedArgs = pipe(
-        parse(config.args, event.arguments),
-        taskEither.fromEither,
-        taskEither.map((v) => {
-          console.log("parsed args successfully: ", v);
-          logStore.appendLog(["parsed args successfully: ", v]);
-          return v;
-        }),
-        taskEither.mapLeft((e) => {
-          if (string.isString(e)){
-              console.log("parsing args failed: ", e);
-              return e
+          const parsedArgs = pipe(
+            parse(config.args, event.arguments),
+            taskEither.fromEither,
+            taskEither.map((v) => {
+              logStore.appendLog(["parsed args successfully: ", v]);
+              return v;
+            }),
+            taskEither.mapLeft((e) => string.isString(e) ? e : `Incorrect Args: ${draw(e)}`)
+          );
 
-            } 
-            console.log("Incorrect args: ", draw(e));
-            return `Incorrect Args: ${draw(e)}`
-        })
-      );
+          // we build the task making sure to have a readable error if the decoding fails
+          const handlerTask = pipe(
+            taskEither.Do,
+            taskEither.bind("args", () => parsedArgs),
+            taskEither.bind("env", () =>
+              config.envSchema
+                ? parseRecordValues(config.envSchema, envRuntime, logStore)
+                : taskEither.of(undefined)
+            ),
+            taskEither.chain((i) => handler({ ...i, logStore }))
+          );
 
-      // we build the task making sure to have a readable error if the decoding fails
-      const handlerTask = pipe(
-        taskEither.Do,
-        taskEither.bind("args", () => parsedArgs),
-        taskEither.bind("env", () =>
-          config.envSchema
-            ? parseRecordValues(config.envSchema, envRuntime, logStore)
-            : taskEither.of(undefined)
-        ),
-        taskEither.chain((i) => handler({ ...i, logStore }))
-      );
+          // we throw in case of error
+          return handlerTask()
+            .then((result) => {
+              if (either.isLeft(result)) {
+                const error = M.AppSyncLambdaError.decode(result.left);
 
-      // we throw in case of error
-      return handlerTask()
-        .then((result) => {
-          console.log("result: ", result);
-          if (either.isLeft(result)) {
-            const error = M.AppSyncLambdaError.decode(result.left);
+                if (string.isString(result.left)) {
+                  throw `[node-framework] ${result.left}`;
+                } else if (either.isRight(error)) {
+                  throw `[node-framework] ${error.right.errorMessage}`;
+                } else {
+                  logStore.appendLog(["unknown error...: ", result.left]);
+                  throw new Error("[node-framework] handler unknown error");
+                }
+              }
 
-            if (either.isRight(error)) {
-              throw `[node-framework] ${error.right.errorMessage}`;
-            } else {
-              logStore.appendLog(["unknown error...: ", result.left]);
-              throw new Error("[node-framework] handler unknown error");
-            }
-          }
+              logStore.appendLog(["handler succeded with payload: ", result.right]);
+              logStore.reset();
 
-          logStore.appendLog(["handler succeded with payload: ", result.right]);
-          logStore.reset();
-
-          return result.right;
-        })
-        .catch((e) => {
-          logStore.appendLog(["handler failed!: ", e]);
-          logStore.reset();
-          throw e;
+              return result.right;
+            })
+            .catch((e) => {
+              logStore.appendLog(["handler failed!: ", e]);
+              logStore.reset();
+              throw e;
+            });
         });
-    });
-  };
+      };
 
 export const getEventLambda = <O, A, R, K extends string = never>(
   i: EventLambdaConfig<A, K>
