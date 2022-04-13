@@ -1,7 +1,8 @@
-import { EventBridgeEvent, APIGatewayProxyEvent } from "aws-lambda";
+import { EventBridgeEvent, APIGatewayProxyEvent, AppSyncResolverEvent } from "aws-lambda";
 import * as Sentry from "@sentry/serverless";
 import * as C from "io-ts/Codec";
 import * as D from "io-ts/Decoder";
+import * as M from "./models";
 import { parse } from "./parse";
 import { pipe } from "fp-ts/lib/function";
 import { string, either, taskEither } from "fp-ts";
@@ -21,6 +22,11 @@ type EventLambdaConfig<A, K extends string> = {
 type HttpLambdaConfig<A, K extends string> = {
   body: D.Decoder<unknown, A>;
   headers?: SchemaRecord<K>;
+  envSchema?: SchemaRecord<K>;
+};
+
+type AppSyncLambdaConfig<A, K extends string> = {
+  args: D.Decoder<unknown, A>;
   envSchema?: SchemaRecord<K>;
 };
 
@@ -226,6 +232,80 @@ export const _httpLambda =
     });
   };
 
+export const _appSyncLambda =
+  <A, R, K extends string = never>(
+    wrapperFunc: WrapHandler<AppSyncResolverEvent<A>, R | void>,
+    envRuntime = process.env
+  ) =>
+  (config: AppSyncLambdaConfig<A, K>) =>
+  (
+    handler: ({
+      args,
+      env,
+    }: {
+      args: A;
+      env: Record<K, string> | undefined;
+      logStore: LogStore;
+    }) => taskEither.TaskEither<unknown, R>
+  ) => {
+    return wrapperFunc((event: AppSyncResolverEvent<A>) => {
+      const logStore = new LogStore(
+        getPinoLogger({ name: "framework-node" }),
+        500
+      );
+      logStore.appendLog(["parsing args: ", config.args]);
+
+      const parsedArgs = pipe(
+        parse(config.args, event.arguments),
+        taskEither.fromEither,
+        taskEither.map((v) => {
+          logStore.appendLog(["parsed args successfully: ", v]);
+          return v;
+        }),
+        taskEither.mapLeft((e) =>
+          string.isString(e) ? e : `Incorrect Args: ${draw(e)}`
+        )
+      );
+
+      // we build the task making sure to have a readable error if the decoding fails
+      const handlerTask = pipe(
+        taskEither.Do,
+        taskEither.bind("args", () => parsedArgs),
+        taskEither.bind("env", () =>
+          config.envSchema
+            ? parseRecordValues(config.envSchema, envRuntime, logStore)
+            : taskEither.of(undefined)
+        ),
+        taskEither.chain((i) => handler({ ...i, logStore })),
+      );
+
+      // we throw in case of error
+      return handlerTask()
+        .then((result) => {
+          if (either.isLeft(result)) {
+            const error = M.AppSyncLambdaError.decode(result.left)
+              
+            if (either.isRight(error)) {
+              throw `[node-framework] ${error.right.errorMessage}`;
+            } else {
+              logStore.appendLog(["unknown error...: ", result.left]);
+              throw new Error("[node-framework] handler unknown error");
+            }
+          }
+
+          logStore.appendLog(["handler succeded with payload: ", result.right]);
+          logStore.reset();
+
+          return result.right;
+        })
+        .catch((e) => {
+          logStore.appendLog(["handler failed!: ", e]);
+          logStore.reset();
+          throw e;
+        });
+    });
+  };
+
 export const getEventLambda = <O, A, R, K extends string = never>(
   i: EventLambdaConfig<A, K>
 ) => {
@@ -248,6 +328,17 @@ export const getHttpLambda = <A, R, K extends string = never>(
       eventMeta: EventMeta;
     }) => taskEither.TaskEither<unknown, R>
   ) => WrapHandler<APIGatewayProxyEvent, R | void>;
+};
+
+export const getAppSyncLambda = <A, R, K extends string = never>(
+  i: AppSyncLambdaConfig<A, K>
+) => {
+  return _appSyncLambda(Sentry.AWSLambda.wrapHandler)(i) as unknown as (
+    f: (i: {
+      args: A;
+      env: Record<K, string> | undefined;
+    }) => taskEither.TaskEither<unknown, R>
+  ) => WrapHandler<AppSyncResolverEvent<A>, R | void>;
 };
 
 export * from "./init";
