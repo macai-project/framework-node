@@ -1,4 +1,8 @@
-import { EventBridgeEvent, APIGatewayProxyEvent, AppSyncResolverEvent } from "aws-lambda";
+import {
+  EventBridgeEvent,
+  APIGatewayProxyEvent,
+  AppSyncResolverEvent,
+} from "aws-lambda";
 import * as Sentry from "@sentry/serverless";
 import * as C from "io-ts/Codec";
 import * as D from "io-ts/Decoder";
@@ -276,15 +280,15 @@ export const _appSyncLambda =
             ? parseRecordValues(config.envSchema, envRuntime, logStore)
             : taskEither.of(undefined)
         ),
-        taskEither.chain((i) => handler({ ...i, logStore })),
+        taskEither.chain((i) => handler({ ...i, logStore }))
       );
 
       // we throw in case of error
       return handlerTask()
         .then((result) => {
           if (either.isLeft(result)) {
-            const error = M.AppSyncLambdaError.decode(result.left)
-              
+            const error = M.AppSyncLambdaError.decode(result.left);
+
             if (either.isRight(error)) {
               throw `[node-framework] ${error.right.errorMessage}`;
             } else {
@@ -314,6 +318,7 @@ export const getEventLambda = <O, A, R, K extends string = never>(
       event: A;
       env: Record<K, string> | undefined;
       eventMeta: EventMeta;
+      logStore: LogStore;
     }) => taskEither.TaskEither<unknown, R>
   ) => WrapHandler<EventBridgeEvent<string, O>, R | void>;
 };
@@ -326,6 +331,7 @@ export const getHttpLambda = <A, R, K extends string = never>(
       body: A;
       env: Record<K, string> | undefined;
       eventMeta: EventMeta;
+      logStore: LogStore;
     }) => taskEither.TaskEither<unknown, R>
   ) => WrapHandler<APIGatewayProxyEvent, R | void>;
 };
@@ -337,6 +343,7 @@ export const getAppSyncLambda = <A, R, K extends string = never>(
     f: (i: {
       args: A;
       env: Record<K, string> | undefined;
+      logStore: LogStore;
     }) => taskEither.TaskEither<unknown, R>
   ) => WrapHandler<AppSyncResolverEvent<A>, R | void>;
 };
