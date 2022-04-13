@@ -143,11 +143,13 @@ export const _eventLambda =
           }
 
           logStore.appendLog(["handler succeded with payload: ", result.right]);
+          logStore.reset();
 
           return result.right;
         })
         .catch((e) => {
           logStore.appendLog(["handler failed!: ", e]);
+          logStore.reset();
           throw e;
         });
     });
