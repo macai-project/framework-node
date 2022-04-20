@@ -9,7 +9,7 @@ export interface StrictEncoderBrand {
   readonly StrictEncoder: unique symbol;
 }
 
-type InputStrict<O extends Props<string>> = {
+export type InputStrict<O extends Props<string>> = {
   [k in keyof O]: E.OutputOf<O[k]>;
 };
 
