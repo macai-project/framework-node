@@ -1,3 +1,4 @@
+import * as E from "fp-ts/Either";
 import * as S from "fp-ts/string";
 import * as R from "fp-ts/Record";
 import * as A from "fp-ts/Array";
@@ -22,16 +23,29 @@ export type Props<K extends string> = {
 export const Strict = <D extends Props<string>>(
   d: D
 ): D.Decoder<unknown, OutputStrict<D>> => {
+  const originalDecoder = D.struct(d);
   const noForeignKeys: D.Decoder<unknown, object> = {
     decode: (v: unknown) => {
+      const originalResult = originalDecoder.decode(v);
+
+      if (E.isLeft(originalResult)) {
+        return originalResult;
+      }
+
       const decoderKeys = pipe(d, R.keys);
 
       if (typeof v === "object" && v !== null) {
         const valueKeys = pipe(v, R.keys);
-        const unknownKeys = pipe(decoderKeys, A.difference(S.Eq)(valueKeys));
+        const unknownKeys = pipe(valueKeys, A.difference(S.Eq)(decoderKeys));
+
         return unknownKeys.length === 0
-          ? D.success(v)
-          : D.failure(v, `unknown keys: ${unknownKeys.join(", ")}`);
+          ? originalResult
+          : D.failure(
+              v,
+              `without the unknown keys: ${unknownKeys
+                .map((k) => `"${k}"`)
+                .join(", ")}`
+            );
       }
 
       return D.failure(v, "object");
