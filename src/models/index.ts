@@ -30,7 +30,3 @@ export const EventBridgeEnv = D.intersect(NodeEnv)(
     AWS_EVENTBRIDGE_REGION: D.string,
   })
 );
-
-export const AppSyncLambdaError = D.struct({
-  errorMessage: D.string
-});

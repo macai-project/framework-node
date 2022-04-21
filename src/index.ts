@@ -6,7 +6,6 @@ import {
 import * as Sentry from "@sentry/serverless";
 import * as C from "io-ts/Codec";
 import * as D from "io-ts/Decoder";
-import * as M from "./models";
 import { parse } from "./parse";
 import { pipe } from "fp-ts/lib/function";
 import { string, either, taskEither } from "fp-ts";
@@ -268,7 +267,9 @@ export const _appSyncLambda =
               logStore.appendLog(["parsed args successfully: ", v]);
               return v;
             }),
-            taskEither.mapLeft((e) => string.isString(e) ? e : `Incorrect Args: ${draw(e)}`)
+            taskEither.mapLeft((e) =>
+              string.isString(e) ? e : `Incorrect Args: ${draw(e)}`
+            )
           );
 
           // we build the task making sure to have a readable error if the decoding fails
@@ -287,12 +288,8 @@ export const _appSyncLambda =
           return handlerTask()
             .then((result) => {
               if (either.isLeft(result)) {
-                const error = M.AppSyncLambdaError.decode(result.left);
-
                 if (string.isString(result.left)) {
                   throw `[node-framework] ${result.left}`;
-                } else if (either.isRight(error)) {
-                  throw `[node-framework] ${error.right.errorMessage}`;
                 } else {
                   logStore.appendLog(["unknown error...: ", result.left]);
                   throw new Error("[node-framework] handler unknown error");
