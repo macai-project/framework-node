@@ -289,7 +289,7 @@ export const _appSyncLambda =
             .then((result) => {
               if (either.isLeft(result)) {
                 if (string.isString(result.left)) {
-                  throw `[node-framework] ${result.left}`;
+                  throw { type: "HandlerError", message: result.left };
                 } else {
                   logStore.appendLog(["unknown error...: ", result.left]);
                   throw new Error("[node-framework] handler unknown error");
