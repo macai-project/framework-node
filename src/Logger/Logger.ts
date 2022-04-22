@@ -12,5 +12,7 @@ export interface Logger {
 }
 
 export const getPinoLogger = ({ name }: LoggerOptions): Logger => {
-  return pino({ name });
+  const logger = pino({ name, level: "debug" });
+
+  return logger;
 };
