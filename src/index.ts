@@ -289,6 +289,7 @@ export const _appSyncLambda =
         .then((result) => {
           if (either.isLeft(result)) {
             if (string.isString(result.left)) {
+              logStore.appendLog(["handler error: ", result.left]);
               throw new Error(result.left);
             } else {
               logStore.appendLog(["unknown error...: ", result.left]);
