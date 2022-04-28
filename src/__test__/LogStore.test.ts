@@ -55,13 +55,13 @@ describe.only("LogStore", () => {
 
     expect(pinoDebugSpy.mock.calls).toEqual([
       [
-        "foo baz bar",
         {
           baz: ["bar"],
           foo: 1,
         },
+        "foo baz bar",
       ],
-      ["foobazbar"],
+      [[], "foobazbar"],
     ]);
   });
 
