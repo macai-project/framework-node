@@ -1,3 +1,5 @@
+import * as A from "fp-ts/lib/Array";
+import { pipe } from "fp-ts/lib/function";
 import { Log, Logger } from "./Logger";
 
 export class LogStore {
@@ -9,7 +11,10 @@ export class LogStore {
 
   private printStore = () => {
     this.logs.forEach((l) => {
-      this.logger.debug(...l);
+      const message = l[0];
+      const logObject = l.length === 2 ? l[1] : pipe(l, A.dropLeft(1));
+
+      this.logger.debug(logObject, message);
     });
   };
 

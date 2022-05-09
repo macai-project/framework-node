@@ -9,6 +9,7 @@ interface LoggerOptions {
 export interface Logger {
   debug(...args: Log): void;
   warn(msg: string): void;
+  info(msg: string): void;
 }
 
 export const getPinoLogger = ({ name }: LoggerOptions): Logger => {
