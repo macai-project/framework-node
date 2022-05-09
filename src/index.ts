@@ -350,3 +350,4 @@ export const getAppSyncLambda = <A, R, K extends string = never>(
 
 export * from "./init";
 export * from "./parse";
+export * from "./codecs";
