@@ -15,15 +15,11 @@ export const createAuroraPool = (
   const isStaging = env.NODE_ENV === "staging";
   const mysqlClient = isProd || isStaging ? captureMySQL(mysql) : mysql;
 
-  return isProd || isStaging
-    ? mysqlClient.createPool({
-        connectionLimit: 2,
-        host: env.AURORA_HOSTNAME,
-        user: env.AURORA_USERNAME,
-        password: env.AURORA_PASSWORD,
-        database: env.AURORA_DATABASE,
-      })
-    : mysqlClient.createPool({
-        connectionLimit: 2,
-      });
+  return mysqlClient.createPool({
+    connectionLimit: 2,
+    host: env.AURORA_HOSTNAME,
+    user: env.AURORA_USERNAME,
+    password: env.AURORA_PASSWORD,
+    database: env.AURORA_DATABASE,
+  });
 };
