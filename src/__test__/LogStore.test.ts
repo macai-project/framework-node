@@ -43,7 +43,7 @@ describe.only("LogStore", () => {
     );
   });
 
-  it.only("when resetting the store and logs are not enabled, it prints the log", async () => {
+  it("when resetting the store and logs are not enabled, it prints the log", async () => {
     const logger = getPinoLogger({ name: "TEST" });
     const pinoDebugSpy = jest.spyOn(logger, "debug");
 
