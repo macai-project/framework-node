@@ -51,7 +51,7 @@ export class DynamoInfrastructure implements DynamoIntrastructureInterface {
   public putDbRows = (
     i: TransactWriteItem[]
   ): taskEither.TaskEither<string, TransactWriteItemsOutput[]> => {
-    this.logStore.appendLog([`executing transaction`, i]);
+    this.logStore.appendLog([`executing transaction`, { transaction: i }]);
 
     if (i.length === 0) {
       return taskEither.left("no rows to update!");
@@ -72,11 +72,11 @@ export class DynamoInfrastructure implements DynamoIntrastructureInterface {
                   throw r.$response.error;
                 }
 
-                this.logStore.appendLog(["putDbRows success: ", r]);
+                this.logStore.appendLog(["putDbRows success: ", { success: r }]);
                 return r.$response.data as TransactWriteItemsOutput;
               })
               .catch((e) => {
-                this.logStore.appendLog(["putDbRows error: ", e]);
+                this.logStore.appendLog(["putDbRows error: ", { error: e }]);
 
                 throw e;
               }),
@@ -120,7 +120,7 @@ export class DynamoInfrastructure implements DynamoIntrastructureInterface {
 
   public query = (q: Omit<QueryInput, "TableName">) => {
     const query = { ...q, TableName: this.tableName };
-    this.logStore.appendLog([`querying DB...`, query]);
+    this.logStore.appendLog([`querying DB...`, { query }]);
 
     const queryDB = () =>
       this.appDynamoRepository
@@ -135,7 +135,7 @@ export class DynamoInfrastructure implements DynamoIntrastructureInterface {
             : undefined;
         })
         .then((r) => {
-          this.logStore.appendLog([`successful query`, r]);
+          this.logStore.appendLog([`successful query`, { result: r }]);
 
           return r;
         });
@@ -145,11 +145,11 @@ export class DynamoInfrastructure implements DynamoIntrastructureInterface {
         e instanceof Error
           ? e.message
           : string.isString(e)
-          ? e
-          : "unknown error when querying the db";
+            ? e
+            : "unknown error when querying the db";
       this.logStore.appendLog([
         `failed querying the DB! ${e instanceof Error ? e.message : e}`,
-        e,
+        { error: e }
       ]);
       return printedError;
     });
