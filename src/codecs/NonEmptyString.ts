@@ -15,4 +15,4 @@ const decoder: D.Decoder<unknown, NonEmptyString> = pipe(
 const encoder: E.Encoder<string, NonEmptyString> = {
   encode: C.string.encode
 }
-const NonEmptyString = C.make(decoder, encoder)
+export const NonEmptyString = C.make(decoder, encoder)
