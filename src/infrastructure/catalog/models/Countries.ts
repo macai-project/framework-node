@@ -1,3 +1,3 @@
 export enum Countries {
-  it = "it",
+  it = 'it',
 }
