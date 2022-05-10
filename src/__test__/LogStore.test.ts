@@ -55,13 +55,13 @@ describe.only("LogStore", () => {
 
     expect(pinoDebugSpy.mock.calls).toEqual([
       [
+        "foo baz bar",
         {
           baz: ["bar"],
           foo: 1,
         },
-        "foo baz bar",
       ],
-      [[], "foobazbar"],
+      ["foobazbar", undefined],
     ]);
   });
 
@@ -90,5 +90,15 @@ describe.only("LogStore", () => {
     logStore.reset();
 
     expect(logStore.getCapacity()).toBe("0/3");
+  });
+
+  it("pass message and merging object to logger.debug when logs are enabled", async () => {
+    const logger = getPinoLogger({ name: "TEST" });
+    const pinoDebugSpy = jest.spyOn(logger, "debug");
+    const logStore = new LogStore(logger, Infinity, () => true);
+
+    logStore.appendLog(["LogMessageName", { foo: "bar" }]);
+
+    expect(pinoDebugSpy).toHaveBeenCalledWith("LogMessageName", { foo: "bar" });
   });
 });

@@ -1,5 +1,3 @@
-import * as A from "fp-ts/lib/Array";
-import { pipe } from "fp-ts/lib/function";
 import { Log, Logger } from "./Logger";
 
 export class LogStore {
@@ -11,10 +9,7 @@ export class LogStore {
 
   private printStore = () => {
     this.logs.forEach((l) => {
-      const message = l[0];
-      const logObject = l.length === 2 ? l[1] : pipe(l, A.dropLeft(1));
-
-      this.logger.debug(logObject, message);
+      this.logger.debug(l[0], l[1]);
     });
   };
 
@@ -22,7 +17,7 @@ export class LogStore {
     private logger: Logger,
     public readonly capacity = Infinity,
     private areLogEnabled = () => process.env.FRAMEWORK_LOGS === "true"
-  ) {}
+  ) { }
 
   public getCapacity = () => {
     return `${this.logs.length}/${this.capacity}`;
@@ -37,7 +32,7 @@ export class LogStore {
     }
 
     if (this.areLogEnabled()) {
-      this.logger.debug(...l);
+      this.logger.debug(l[0], l[1]);
     }
 
     this.logs.push(l);

@@ -1,6 +1,6 @@
 import pino from "pino";
 
-export type Log = [s: string, ...args: any[]];
+export type Log = [message: string, mergingObject?: Record<string, unknown>];
 
 interface LoggerOptions {
   name: string;
@@ -15,5 +15,11 @@ export interface Logger {
 export const getPinoLogger = ({ name }: LoggerOptions): Logger => {
   const logger = pino({ name, level: "debug" });
 
-  return logger;
+  return {
+    debug: (...args: Log) => {
+      logger.debug(args[1], args[0]);
+    },
+    warn: (msg: string) => logger.warn(msg),
+    info: (msg: string) => logger.info(msg),
+  }
 };
