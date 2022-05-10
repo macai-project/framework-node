@@ -1,14 +1,14 @@
-import { taskEither } from "fp-ts";
-import { EntityType, Entity } from "./models/entities";
+import { taskEither } from 'fp-ts'
+import { EntityType, Entity } from './models/entities'
 import {
   AttributeName,
   AttributeValue,
   TransactWriteItemsOutput,
-} from "aws-sdk/clients/dynamodb";
+} from 'aws-sdk/clients/dynamodb'
 
 export interface Replacement<V> {
-  type: "replacement";
-  newValue: V;
+  type: 'replacement'
+  newValue: V
 }
 
 /**
@@ -17,49 +17,49 @@ export interface Replacement<V> {
  * @deprecated Use a {@link CustomUpdate} instead.
  */
 export interface PartialUpdate<V> {
-  type: "partialUpdate";
-  update: (oldValue: V) => V;
+  type: 'partialUpdate'
+  update: (oldValue: V) => V
 }
 
-type HashedKey = `#${string}`;
-type ColumnedKey = `:${string}`;
+type HashedKey = `#${string}`
+type ColumnedKey = `:${string}`
 export interface CustomUpdate {
-  type: "customUpdate";
+  type: 'customUpdate'
   generalCondition?: {
-    expression: string;
+    expression: string
     placeholders?: {
-      names?: { [key: HashedKey]: AttributeName };
-      values?: { [key: ColumnedKey]: AttributeValue };
-    };
-  };
+      names?: { [key: HashedKey]: AttributeName }
+      values?: { [key: ColumnedKey]: AttributeValue }
+    }
+  }
   values: Record<
     string,
-    { value: any; condition?: "only_if_empty"; noDrill?: boolean }
-  >;
+    { value: any; condition?: 'only_if_empty'; noDrill?: boolean }
+  >
 }
 
-export type EntityUpdate<V> = Replacement<V> | PartialUpdate<V> | CustomUpdate;
+export type EntityUpdate<V> = Replacement<V> | PartialUpdate<V> | CustomUpdate
 
 export interface CatalogIntrastructureInterface {
   removeRelation(
     source: { type: EntityType; id: string },
     target: { type: EntityType; id: string }
-  ): taskEither.TaskEither<string, void>;
+  ): taskEither.TaskEither<string, void>
   createRelation(i: {
-    relationSource: { type: EntityType; id: string };
-    relationTarget: { type: EntityType; id: string };
-  }): taskEither.TaskEither<string, TransactWriteItemsOutput[]>;
+    relationSource: { type: EntityType; id: string }
+    relationTarget: { type: EntityType; id: string }
+  }): taskEither.TaskEither<string, TransactWriteItemsOutput[]>
 
-  removeEntity(t: EntityType, id: string): taskEither.TaskEither<string, void>;
+  removeEntity(t: EntityType, id: string): taskEither.TaskEither<string, void>
   createEntity(
     id: string,
     e: Entity
-  ): taskEither.TaskEither<string, TransactWriteItemsOutput[]>;
+  ): taskEither.TaskEither<string, TransactWriteItemsOutput[]>
   updateEntity<E extends Entity>(
     i: {
-      type: E["type"];
-      id: string;
+      type: E['type']
+      id: string
     },
-    u: EntityUpdate<E["body"]>
-  ): taskEither.TaskEither<string, TransactWriteItemsOutput[]>;
+    u: EntityUpdate<E['body']>
+  ): taskEither.TaskEither<string, TransactWriteItemsOutput[]>
 }

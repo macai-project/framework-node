@@ -1,6 +1,6 @@
-import { either } from "fp-ts";
-import { pipe } from "fp-ts/lib/function";
-import * as D from "io-ts/Decoder";
+import { either } from 'fp-ts'
+import { pipe } from 'fp-ts/lib/function'
+import * as D from 'io-ts/Decoder'
 
 /**
  * Try to decode the payload with the given io-ts codec
@@ -20,16 +20,16 @@ export const decodeOrThrow = <O>(
   payload: unknown,
   codecName?: string
 ): O => {
-  const result = codec.decode(payload);
+  const result = codec.decode(payload)
 
-  if (result._tag === "Left") {
+  if (result._tag === 'Left') {
     throw codecName
       ? `Wrong ${codecName}: ${D.draw(result.left)}`
-      : D.draw(result.left);
+      : D.draw(result.left)
   }
 
-  return result.right;
-};
+  return result.right
+}
 
 /**
  * Try to decode the payload with the given io-ts codec, if fails draw a human readable error
@@ -52,7 +52,7 @@ export const decodeOrDraw = <O>(
   return pipe(
     codec.decode(payload),
     either.mapLeft((e) => {
-      return codecName ? `Wrong ${codecName}: ${D.draw(e)}` : D.draw(e);
+      return codecName ? `Wrong ${codecName}: ${D.draw(e)}` : D.draw(e)
     })
-  );
-};
+  )
+}

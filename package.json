@@ -13,9 +13,12 @@
     "build": "tsc",
     "prepublishOnly": "npm run build",
     "release": "release-it",
+    "format": "prettier --write 'src/**/*.ts'",
     "test": "jest --config=jest.config.js --passWithNoTests",
     "test:w": "jest --config=jest.config.js --passWithNoTests --watch",
-    "compile:w": "tsc --noEmit --watch --project tsconfig.json"
+    "compile": "tsc --noEmit --project tsconfig.json",
+    "compile:w": "tsc --noEmit --watch --project tsconfig.json",
+    "prepare": "husky install"
   },
   "dependencies": {
     "@aws-sdk/client-eventbridge": "^3.47.0",
@@ -35,8 +38,11 @@
   },
   "devDependencies": {
     "@types/jest": "^27.0.3",
+    "husky": "^8.0.0",
     "io-ts-types": "^0.3.5",
     "jest": "^27.4.5",
+    "lint-staged": ">=10",
+    "prettier": "^2.6.2",
     "ts-jest": "^27.1.2",
     "typescript": "^4.4.3"
   },
@@ -48,5 +54,8 @@
   "files": [
     "dist",
     "package.json"
-  ]
+  ],
+  "lint-staged": {
+    "*.ts": "prettier --write"
+  }
 }
