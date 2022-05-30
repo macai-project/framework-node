@@ -16,6 +16,21 @@ export const InEvidenceTagProps = {
   ...InEvidenceTagOptional,
 }
 
+export const DietAndWellnessMandatory = {
+  id: C.string,
+  name: C.string,
+  type: C.literal('diet-and-wellness'),
+  state: C.literal('published', 'draft', 'coming-soon', 'archived'),
+  body: C.partial({ order: C.number }),
+}
+
+export const DietAndWellnessOptional = {}
+
+export const DietAndWellnessProps = {
+  ...DietAndWellnessMandatory,
+  ...DietAndWellnessOptional,
+}
+
 const BannerTagCommon = C.partial({
   order: C.number,
   title: C.string,
@@ -59,6 +74,7 @@ export const BannerTagProps = {
 
 export const Tag = C.sum('type')({
   'in-evidence': C.struct(InEvidenceTagProps),
+  'diet-and-wellness': C.struct(DietAndWellnessProps),
   banner: C.struct(BannerTagProps),
 })
 export type Tag = C.TypeOf<typeof Tag>
