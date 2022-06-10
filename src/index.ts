@@ -15,7 +15,7 @@ import { traverseWithIndex } from 'fp-ts/lib/Record'
 import { DateFromISOString } from './codecs/DateFromISOString'
 import { decodeOrThrow } from './codecs/utils'
 import { LogStore } from './Logger/LogStore'
-import { getPinoLogger } from './Logger/Logger'
+import { getLogger } from './Logger/Logger'
 
 type SchemaRecord<K extends string> = Record<K, C.Codec<unknown, any, any>>
 type EventLambdaConfig<A, K extends string> = {
@@ -93,10 +93,7 @@ export const _eventLambda =
     }) => taskEither.TaskEither<unknown, R>
   ) => {
     return wrapperFunc((event: EventBridgeEvent<string, O>) => {
-      const logStore = new LogStore(
-        getPinoLogger({ name: 'framework-node' }),
-        500
-      )
+      const logStore = new LogStore(getLogger(), 500)
 
       logStore.appendLog(['parsing event: ', { event: event.detail }])
 
@@ -142,7 +139,7 @@ export const _eventLambda =
           }
 
           logStore.appendLog([
-            'handler succeded with payload: ',
+            'handler succeeded with payload: ',
             { success: result.right },
           ])
           logStore.reset()
@@ -176,10 +173,7 @@ export const _httpLambda =
     }) => taskEither.TaskEither<unknown, R>
   ) => {
     return wrapperFunc((event: APIGatewayProxyEvent) => {
-      const logStore = new LogStore(
-        getPinoLogger({ name: 'framework-node' }),
-        500
-      )
+      const logStore = new LogStore(getLogger(), 500)
       logStore.appendLog(['parsing body: ', { body: config.body }])
 
       const parsedBody = pipe(
@@ -228,7 +222,7 @@ export const _httpLambda =
           }
 
           logStore.appendLog([
-            'handler succeded with payload: ',
+            'handler succeeded with payload: ',
             { success: result.right },
           ])
           logStore.reset()
@@ -260,10 +254,7 @@ export const _appSyncLambda =
     }) => taskEither.TaskEither<unknown, R>
   ) => {
     return wrapperFunc((event: AppSyncResolverEvent<A>) => {
-      const logStore = new LogStore(
-        getPinoLogger({ name: 'framework-node' }),
-        500
-      )
+      const logStore = new LogStore(getLogger(), 500)
       logStore.appendLog(['parsing args: ', { args: config.args }])
 
       const parsedArgs = pipe(
@@ -304,7 +295,7 @@ export const _appSyncLambda =
           }
 
           logStore.appendLog([
-            'handler succeded with payload: ',
+            'handler succeeded with payload: ',
             { success: result.right },
           ])
           logStore.reset()
