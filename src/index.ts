@@ -22,9 +22,15 @@ type EventLambdaConfig<A, K extends string> = {
   eventDetailSchema: D.Decoder<unknown, A>
   envSchema?: SchemaRecord<K>
 }
-type HttpLambdaConfig<A, K extends string> = {
+type HttpLambdaConfig<
+  A,
+  K extends string,
+  U extends string,
+  H extends string
+> = {
   body: D.Decoder<unknown, A>
-  headers?: SchemaRecord<K>
+  queryparams?: SchemaRecord<H>
+  headers?: SchemaRecord<U>
   envSchema?: SchemaRecord<K>
 }
 
@@ -35,7 +41,7 @@ type AppSyncLambdaConfig<A, K extends string> = {
 
 const parTraverse = traverseWithIndex(taskEither.ApplicativePar)
 
-const parseRecordValues = <K extends string>(
+const parseRecordValuesForEnv = <K extends string>(
   envSchemaRecord: Record<K, D.Decoder<unknown, string>>,
   envRuntime: {
     [key: string]: string | undefined
@@ -59,6 +65,62 @@ const parseRecordValues = <K extends string>(
     }),
     taskEither.mapLeft((e) => {
       return `incorrect Env runtime: ${draw(e)}`
+    })
+  )
+}
+
+const parseRecordValuesForHeaders = <U extends string>(
+  headersSchemaRecord: Record<U, D.Decoder<unknown, string>>,
+  headersRuntime: {
+    [key: string]: string | undefined
+  },
+  logStore: LogStore
+): taskEither.TaskEither<string, Record<U, string>> => {
+  return pipe(
+    headersSchemaRecord,
+    parTraverse((key, codec) => {
+      const decoderRecord = D.struct({ [key]: codec })
+      logStore.appendLog(['parsing headers: ', headersSchemaRecord])
+
+      return pipe(
+        parse(decoderRecord, { [key]: headersRuntime[key] }),
+        taskEither.fromEither,
+        taskEither.map((v) => {
+          logStore.appendLog(['parsed headers successfully!'])
+          return v[key]
+        })
+      )
+    }),
+    taskEither.mapLeft((e) => {
+      return `incorrect Headers runtime: ${draw(e)}`
+    })
+  )
+}
+
+const parseRecordValuesForQueryparams = <H extends string>(
+  queryparamsSchemaRecord: Record<H, D.Decoder<unknown, string>>,
+  queryparamsRuntime: {
+    [key: string]: string | undefined
+  },
+  logStore: LogStore
+): taskEither.TaskEither<string, Record<H, string>> => {
+  return pipe(
+    queryparamsSchemaRecord,
+    parTraverse((key, codec) => {
+      const decoderRecord = D.struct({ [key]: codec })
+      logStore.appendLog(['parsing query params: ', queryparamsSchemaRecord])
+
+      return pipe(
+        parse(decoderRecord, { [key]: queryparamsRuntime[key] }),
+        taskEither.fromEither,
+        taskEither.map((v) => {
+          logStore.appendLog(['parsed query params successfully!'])
+          return v[key]
+        })
+      )
+    }),
+    taskEither.mapLeft((e) => {
+      return `incorrect query params runtime: ${draw(e)}`
     })
   )
 }
@@ -123,7 +185,7 @@ export const _eventLambda =
         taskEither.bind('eventMeta', () => taskEither.of(eventMeta)),
         taskEither.bind('env', () =>
           envSchema
-            ? parseRecordValues(envSchema, envRuntime, logStore)
+            ? parseRecordValuesForEnv(envSchema, envRuntime, logStore)
             : taskEither.of(undefined)
         ),
         taskEither.chain((i) => handler({ ...i, logStore }))
@@ -158,19 +220,27 @@ export const _eventLambda =
   }
 
 export const _httpLambda =
-  <A, R, K extends string = never>(
+  <
+    A,
+    R,
+    K extends string = never,
+    U extends string = never,
+    H extends string = never
+  >(
     wrapperFunc: WrapHandler<APIGatewayProxyEvent, R | void>,
     envRuntime = process.env
   ) =>
-  (config: HttpLambdaConfig<A, K>) =>
+  (config: HttpLambdaConfig<A, K, U, H>) =>
   (
     handler: ({
       body,
+      queryparams,
       headers,
       env,
     }: {
       body: A
-      headers: Record<K, string> | undefined
+      queryparams: Record<H, string> | undefined
+      headers: Record<U, string> | undefined
       env: Record<K, string> | undefined
       logStore: LogStore
     }) => taskEither.TaskEither<unknown, R>
@@ -204,12 +274,25 @@ export const _httpLambda =
         taskEither.bind('body', () => parsedBody),
         taskEither.bind('env', () =>
           config.envSchema
-            ? parseRecordValues(config.envSchema, envRuntime, logStore)
+            ? parseRecordValuesForEnv(config.envSchema, envRuntime, logStore)
+            : taskEither.of(undefined)
+        ),
+        taskEither.bind('queryparams', () =>
+          config.queryparams
+            ? parseRecordValuesForQueryparams(
+                config.queryparams,
+                event.queryStringParameters || {},
+                logStore
+              )
             : taskEither.of(undefined)
         ),
         taskEither.bind('headers', () =>
           config.headers
-            ? parseRecordValues(config.headers, event.headers, logStore)
+            ? parseRecordValuesForHeaders(
+                config.headers,
+                event.headers,
+                logStore
+              )
             : taskEither.of(undefined)
         ),
         taskEither.chain((i) => handler({ ...i, logStore }))
@@ -284,7 +367,7 @@ export const _appSyncLambda =
         taskEither.bind('args', () => parsedArgs),
         taskEither.bind('env', () =>
           config.envSchema
-            ? parseRecordValues(config.envSchema, envRuntime, logStore)
+            ? parseRecordValuesForEnv(config.envSchema, envRuntime, logStore)
             : taskEither.of(undefined)
         ),
         taskEither.chain((i) => handler({ ...i, logStore }))
@@ -332,13 +415,21 @@ export const getEventLambda = <O, A, R, K extends string = never>(
   ) => WrapHandler<EventBridgeEvent<string, O>, R | void>
 }
 
-export const getHttpLambda = <A, R, K extends string = never>(
-  i: HttpLambdaConfig<A, K>
+export const getHttpLambda = <
+  A,
+  R,
+  K extends string = never,
+  U extends string = never,
+  H extends string = never
+>(
+  i: HttpLambdaConfig<A, K, U, H>
 ) => {
   return _httpLambda(Sentry.AWSLambda.wrapHandler)(i) as unknown as (
     f: (i: {
       body: A
       env: Record<K, string> | undefined
+      headers: Record<U, string> | undefined
+      queryparams: Record<H, string> | undefined
       eventMeta: EventMeta
       logStore: LogStore
     }) => taskEither.TaskEither<unknown, R>
