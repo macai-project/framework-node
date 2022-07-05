@@ -41,86 +41,31 @@ type AppSyncLambdaConfig<A, K extends string> = {
 
 const parTraverse = traverseWithIndex(taskEither.ApplicativePar)
 
-const parseRecordValuesForEnv = <K extends string>(
-  envSchemaRecord: Record<K, D.Decoder<unknown, string>>,
-  envRuntime: {
+const parseSchemaRecord = <K extends string>(
+  recordType: string,
+  schemaRecord: Record<K, D.Decoder<unknown, string>>,
+  runtimeValue: {
     [key: string]: string | undefined
   },
   logStore: LogStore
 ): taskEither.TaskEither<string, Record<K, string>> => {
   return pipe(
-    envSchemaRecord,
+    schemaRecord,
     parTraverse((key, codec) => {
       const decoderRecord = D.struct({ [key]: codec })
-      logStore.appendLog(['parsing env: ', envSchemaRecord])
+      logStore.appendLog([`parsing ${recordType}: `, schemaRecord])
 
       return pipe(
-        parse(decoderRecord, { [key]: envRuntime[key] }),
+        parse(decoderRecord, { [key]: runtimeValue[key] }),
         taskEither.fromEither,
         taskEither.map((v) => {
-          logStore.appendLog(['parsed env successfully!'])
+          logStore.appendLog([`parsed ${recordType} successfully!`])
           return v[key]
         })
       )
     }),
     taskEither.mapLeft((e) => {
-      return `incorrect Env runtime: ${draw(e)}`
-    })
-  )
-}
-
-const parseRecordValuesForHeaders = <U extends string>(
-  headersSchemaRecord: Record<U, D.Decoder<unknown, string>>,
-  headersRuntime: {
-    [key: string]: string | undefined
-  },
-  logStore: LogStore
-): taskEither.TaskEither<string, Record<U, string>> => {
-  return pipe(
-    headersSchemaRecord,
-    parTraverse((key, codec) => {
-      const decoderRecord = D.struct({ [key]: codec })
-      logStore.appendLog(['parsing headers: ', headersSchemaRecord])
-
-      return pipe(
-        parse(decoderRecord, { [key]: headersRuntime[key] }),
-        taskEither.fromEither,
-        taskEither.map((v) => {
-          logStore.appendLog(['parsed headers successfully!'])
-          return v[key]
-        })
-      )
-    }),
-    taskEither.mapLeft((e) => {
-      return `incorrect Headers runtime: ${draw(e)}`
-    })
-  )
-}
-
-const parseRecordValuesForQueryparams = <H extends string>(
-  queryparamsSchemaRecord: Record<H, D.Decoder<unknown, string>>,
-  queryparamsRuntime: {
-    [key: string]: string | undefined
-  },
-  logStore: LogStore
-): taskEither.TaskEither<string, Record<H, string>> => {
-  return pipe(
-    queryparamsSchemaRecord,
-    parTraverse((key, codec) => {
-      const decoderRecord = D.struct({ [key]: codec })
-      logStore.appendLog(['parsing query params: ', queryparamsSchemaRecord])
-
-      return pipe(
-        parse(decoderRecord, { [key]: queryparamsRuntime[key] }),
-        taskEither.fromEither,
-        taskEither.map((v) => {
-          logStore.appendLog(['parsed query params successfully!'])
-          return v[key]
-        })
-      )
-    }),
-    taskEither.mapLeft((e) => {
-      return `incorrect query params runtime: ${draw(e)}`
+      return `incorrect ${recordType} runtime: ${draw(e)}`
     })
   )
 }
@@ -185,7 +130,7 @@ export const _eventLambda =
         taskEither.bind('eventMeta', () => taskEither.of(eventMeta)),
         taskEither.bind('env', () =>
           envSchema
-            ? parseRecordValuesForEnv(envSchema, envRuntime, logStore)
+            ? parseSchemaRecord<K>('Env', envSchema, envRuntime, logStore)
             : taskEither.of(undefined)
         ),
         taskEither.chain((i) => handler({ ...i, logStore }))
@@ -274,12 +219,18 @@ export const _httpLambda =
         taskEither.bind('body', () => parsedBody),
         taskEither.bind('env', () =>
           config.envSchema
-            ? parseRecordValuesForEnv(config.envSchema, envRuntime, logStore)
+            ? parseSchemaRecord<K>(
+                'Env',
+                config.envSchema,
+                envRuntime,
+                logStore
+              )
             : taskEither.of(undefined)
         ),
         taskEither.bind('queryparams', () =>
           config.queryparams
-            ? parseRecordValuesForQueryparams(
+            ? parseSchemaRecord<H>(
+                'Query Params',
                 config.queryparams,
                 event.queryStringParameters || {},
                 logStore
@@ -288,7 +239,8 @@ export const _httpLambda =
         ),
         taskEither.bind('headers', () =>
           config.headers
-            ? parseRecordValuesForHeaders(
+            ? parseSchemaRecord<U>(
+                'Headers',
                 config.headers,
                 event.headers,
                 logStore
@@ -367,7 +319,12 @@ export const _appSyncLambda =
         taskEither.bind('args', () => parsedArgs),
         taskEither.bind('env', () =>
           config.envSchema
-            ? parseRecordValuesForEnv(config.envSchema, envRuntime, logStore)
+            ? parseSchemaRecord<K>(
+                'Env',
+                config.envSchema,
+                envRuntime,
+                logStore
+              )
             : taskEither.of(undefined)
         ),
         taskEither.chain((i) => handler({ ...i, logStore }))
