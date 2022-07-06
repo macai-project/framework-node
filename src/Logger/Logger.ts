@@ -1,25 +1,27 @@
-import pino from 'pino'
+import * as logger from 'lambda-log'
 
 export type Log = [message: string, mergingObject?: Record<string, unknown>]
 
-interface LoggerOptions {
-  name: string
+export interface LoggerOptions {
+  level: LogLevel
 }
+
+export type LogLevel = 'info' | 'warn' | 'error' | 'debug' | 'silent'
 
 export interface Logger {
   debug(...args: Log): void
-  warn(msg: string): void
-  info(msg: string): void
+  warn(...args: Log): void
+  error(...args: Log): void
+  info(...args: Log): void
 }
 
-export const getPinoLogger = ({ name }: LoggerOptions): Logger => {
-  const logger = pino({ name, level: 'debug' })
-
+export const getLogger = (): Logger => {
   return {
     debug: (...args: Log) => {
-      logger.debug(args[1], args[0])
+      logger.debug(args[0], args[1])
     },
-    warn: (msg: string) => logger.warn(msg),
-    info: (msg: string) => logger.info(msg),
+    warn: (...args: Log) => logger.warn(args[0], args[1]),
+    error: (...args: Log) => logger.error(args[0], args[1]),
+    info: (...args: Log) => logger.info(args[0], args[1]),
   }
 }

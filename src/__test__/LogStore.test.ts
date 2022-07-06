@@ -1,34 +1,34 @@
-import { getPinoLogger } from '../Logger/Logger'
+import { getLogger } from '../Logger/Logger'
 import { LogStore } from '../Logger/LogStore'
 
-describe.only('LogStore', () => {
+describe('LogStore', () => {
   it('when logging and logs are enabled, it prints the log', async () => {
-    const logger = getPinoLogger({ name: 'TEST' })
-    const pinoDebugSpy = jest.spyOn(logger, 'debug')
+    const logger = getLogger()
+    const loggerDebugSpy = jest.spyOn(logger, 'debug')
 
     const logStore = new LogStore(logger, Infinity, () => true)
 
     logStore.appendLog(['foo baz bar', { foo: 1, baz: ['bar'] }])
 
-    expect(pinoDebugSpy).toHaveBeenCalledWith('foo baz bar', {
+    expect(loggerDebugSpy).toHaveBeenCalledWith('foo baz bar', {
       baz: ['bar'],
       foo: 1,
     })
   })
 
   it('when logging and logs are not enabled, it does not print the log', async () => {
-    const logger = getPinoLogger({ name: 'TEST' })
-    const pinoDebugSpy = jest.spyOn(logger, 'debug')
+    const logger = getLogger()
+    const loggerDebugSpy = jest.spyOn(logger, 'debug')
 
     const logStore = new LogStore(logger, Infinity, () => false)
 
     logStore.appendLog(['foo baz bar', { foo: 1, baz: ['bar'] }])
 
-    expect(pinoDebugSpy).toHaveBeenCalledTimes(0)
+    expect(loggerDebugSpy).toHaveBeenCalledTimes(0)
   })
 
   it('when logging and maximum capacity is reached, it prints a warning', async () => {
-    const logger = getPinoLogger({ name: 'TEST' })
+    const logger = getLogger()
     const pinoWarnSpy = jest.spyOn(logger, 'warn')
 
     const logStore = new LogStore(logger, 3, () => false)
@@ -44,8 +44,8 @@ describe.only('LogStore', () => {
   })
 
   it('when resetting the store and logs are not enabled, it prints the log', async () => {
-    const logger = getPinoLogger({ name: 'TEST' })
-    const pinoDebugSpy = jest.spyOn(logger, 'debug')
+    const logger = getLogger()
+    const loggerDebugSpy = jest.spyOn(logger, 'debug')
 
     const logStore = new LogStore(logger, 3, () => false)
 
@@ -53,7 +53,7 @@ describe.only('LogStore', () => {
     logStore.appendLog(['foobazbar'])
     logStore.reset()
 
-    expect(pinoDebugSpy.mock.calls).toEqual([
+    expect(loggerDebugSpy.mock.calls).toEqual([
       [
         'foo baz bar',
         {
@@ -66,8 +66,8 @@ describe.only('LogStore', () => {
   })
 
   it('when resetting the store and logs are enabled, it does not print the log', async () => {
-    const logger = getPinoLogger({ name: 'TEST' })
-    const pinoDebugSpy = jest.spyOn(logger, 'debug')
+    const logger = getLogger()
+    const loggerDebugSpy = jest.spyOn(logger, 'debug')
 
     const logStore = new LogStore(logger, 3, () => true)
 
@@ -75,11 +75,11 @@ describe.only('LogStore', () => {
     logStore.appendLog(['foobazbar'])
     logStore.reset()
 
-    expect(pinoDebugSpy).toHaveBeenCalledTimes(2)
+    expect(loggerDebugSpy).toHaveBeenCalledTimes(2)
   })
 
   it('when resetting the store, the logs store is cleared', async () => {
-    const logger = getPinoLogger({ name: 'TEST' })
+    const logger = getLogger()
     const logStore = new LogStore(logger, 3, () => true)
 
     logStore.appendLog(['foo baz bar', { foo: 1, baz: ['bar'] }])
@@ -93,12 +93,14 @@ describe.only('LogStore', () => {
   })
 
   it('pass message and merging object to logger.debug when logs are enabled', async () => {
-    const logger = getPinoLogger({ name: 'TEST' })
-    const pinoDebugSpy = jest.spyOn(logger, 'debug')
+    const logger = getLogger()
+    const loggerDebugSpy = jest.spyOn(logger, 'debug')
     const logStore = new LogStore(logger, Infinity, () => true)
 
     logStore.appendLog(['LogMessageName', { foo: 'bar' }])
 
-    expect(pinoDebugSpy).toHaveBeenCalledWith('LogMessageName', { foo: 'bar' })
+    expect(loggerDebugSpy).toHaveBeenCalledWith('LogMessageName', {
+      foo: 'bar',
+    })
   })
 })

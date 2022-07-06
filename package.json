@@ -23,14 +23,15 @@
   "dependencies": {
     "@aws-sdk/client-eventbridge": "^3.47.0",
     "@sentry/serverless": "^6.13.3",
+    "@types/lambda-log": "^2.2.1",
     "aws-sdk": "^2.1048.0",
     "aws-xray-sdk": "^3.3.3",
     "cross-fetch": "^3.1.4",
     "fp-ts": "^2.11.5",
     "graphql": "15.7.0",
     "io-ts": "^2.2.16",
-    "mysql": "^2.18.1",
-    "pino": "^7.10.0"
+    "lambda-log": "^3.1.0",
+    "mysql": "^2.18.1"
   },
   "peerDependencies": {
     "fp-ts": "^2.11.5",
