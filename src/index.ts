@@ -29,6 +29,7 @@ type HttpLambdaConfig<
   H extends string
 > = {
   body: D.Decoder<unknown, A>
+  rawBody?: string
   queryparams?: SchemaRecord<H>
   headers?: SchemaRecord<U>
   envSchema?: SchemaRecord<K>
@@ -179,11 +180,13 @@ export const _httpLambda =
   (
     handler: ({
       body,
+      rawBody,
       queryparams,
       headers,
       env,
     }: {
       body: A
+      rawBody: string
       queryparams: Record<H, string> | undefined
       headers: Record<U, string> | undefined
       env: Record<K, string> | undefined
@@ -217,6 +220,7 @@ export const _httpLambda =
       const handlerTask = pipe(
         taskEither.Do,
         taskEither.bind('body', () => parsedBody),
+        taskEither.bind('rawBody', () => taskEither.of(event.body || '')),
         taskEither.bind('env', () =>
           config.envSchema
             ? parseSchemaRecord<K>(
@@ -384,6 +388,7 @@ export const getHttpLambda = <
   return _httpLambda(Sentry.AWSLambda.wrapHandler)(i) as unknown as (
     f: (i: {
       body: A
+      rawBody?: string
       env: Record<K, string> | undefined
       headers: Record<U, string> | undefined
       queryparams: Record<H, string> | undefined
