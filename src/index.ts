@@ -408,3 +408,5 @@ export const getAppSyncLambda = <A, R, K extends string = never>(
 export * from './init'
 export * from './parse'
 export * from './codecs'
+
+export { MidecFromEAN, UUID_V5_NAMESPACE } from './utils/midec'

@@ -30,7 +30,8 @@
     "graphql": "15.7.0",
     "io-ts": "^2.2.16",
     "mysql": "^2.18.1",
-    "pino": "^7.10.0"
+    "pino": "^7.10.0",
+    "uuid": "^8.3.2"
   },
   "peerDependencies": {
     "fp-ts": "^2.11.5",
@@ -38,6 +39,7 @@
   },
   "devDependencies": {
     "@types/jest": "^27.0.3",
+    "@types/uuid": "^8.3.4",
     "husky": "^8.0.0",
     "io-ts-types": "^0.3.5",
     "jest": "^27.4.5",
